@@ -38,6 +38,7 @@ class KVService extends ComponentDefinition {
   //******* Handlers ******
   net uponEvent {
     case NetMessage(header, op: Op) => handle {
+      // TODO: this is where the client op comes in
       log.info("Got operation {}! Now implement me please :)", op);
       trigger(NetMessage(self, header.src, op.response(OpCode.NotImplemented)) -> net);
     }

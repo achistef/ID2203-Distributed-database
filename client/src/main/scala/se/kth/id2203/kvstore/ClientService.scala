@@ -54,7 +54,7 @@ class ClientService extends ComponentDefinition {
     case _: Start => handle {
       log.debug(s"Starting client on $self. Waiting to connect...");
       val timeout: Long = (cfg.getValue[Long]("id2203.project.keepAlivePeriod") * 2l);
-      val st = new ScheduleTimeout(timeout);
+      val st: ScheduleTimeout = new ScheduleTimeout(timeout);
       st.setTimeoutEvent(ConnectTimeout(st));
       trigger (st -> timer);
       timeoutId = Some(st.getTimeoutEvent().getTimeoutId());

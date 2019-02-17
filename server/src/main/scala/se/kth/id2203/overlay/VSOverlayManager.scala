@@ -52,20 +52,31 @@ class VSOverlayManager extends ComponentDefinition {
   private var lut: Option[LookupTable] = None;
   //******* Handlers ******
   boot uponEvent {
+    // TODO boot related
     case GetInitialAssignments(nodes) => handle {
       log.info("Generating LookupTable...");
-      val lut = LookupTable.generate(nodes);
+      val delta = cfg.getValue[Int]("id2203.project.delta")
+      val lut = LookupTable.generate(nodes, delta);
       logger.debug("Generated assignments:\n$lut");
       trigger (new InitialAssignments(lut) -> boot);
     }
     case Booted(assignment: LookupTable) => handle {
       log.info("Got NodeAssignment, overlay ready.");
       lut = Some(assignment);
+      println(lut.toString)
     }
   }
 
   net uponEvent {
+    // TODO routing from clients is happening here
     case NetMessage(header, RouteMsg(key, msg)) => handle {
+
+      println(" ---------------------")
+      println()
+      println(" Routing message")
+      println()
+      println(" ---------------------")
+
       val nodes = lut.get.lookup(key);
       assert(!nodes.isEmpty);
       val i = Random.nextInt(nodes.size);
@@ -74,6 +85,12 @@ class VSOverlayManager extends ComponentDefinition {
       trigger(NetMessage(header.src, target, msg) -> net);
     }
     case NetMessage(header, msg: Connect) => handle {
+
+      println(" ---------------------")
+      println()
+      println(" received message")
+      println()
+      println(" ---------------------")
       lut match {
         case Some(l) => {
           log.debug("Accepting connection request from ${header.src}");
@@ -86,6 +103,7 @@ class VSOverlayManager extends ComponentDefinition {
   }
 
   route uponEvent {
+    // TODO routing from kv store is happening here
     case RouteMsg(key, msg) => handle {
       val nodes = lut.get.lookup(key);
       assert(!nodes.isEmpty);

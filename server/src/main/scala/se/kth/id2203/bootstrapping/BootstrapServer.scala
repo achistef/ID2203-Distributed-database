@@ -49,6 +49,11 @@ class BootstrapServer extends ComponentDefinition {
   //******* Fields ******
   val self = cfg.getValue[NetAddress]("id2203.project.address");
   val bootThreshold = cfg.getValue[Int]("id2203.project.bootThreshold");
+  println(" --------------- ")
+  println()
+  println ("threshold =  " + bootThreshold)
+  println()
+  println(" --------------- ")
   private var state: State = Collecting;
   private var timeoutId: Option[UUID] = None;
   private val active = mutable.HashSet.empty[NetAddress];
@@ -73,6 +78,11 @@ class BootstrapServer extends ComponentDefinition {
         case Collecting => {
           log.info("{} hosts in active set.", active.size);
           if (active.size >= bootThreshold) {
+            println(" --------------- ")
+            println()
+            println ("active size =  " + active.size)
+            println()
+            println(" --------------- ")
             bootUp();
           }
         }

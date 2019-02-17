@@ -1,5 +1,4 @@
 cd %~dp0
-call sbt clean compile test server/assembly client/assembly
 
 xcopy /e /y .\common .\test\s\common\
 xcopy /e /y .\common .\test\c\common\
@@ -19,11 +18,11 @@ cd test\s
 
 start "1" cmd /c "java -jar server/target/scala-2.12/server.jar -p 45678 & pause"
 
-for /l %%x in (45679,1,45691) do (
-timeout 5
-start "%%x" cmd /c "java -jar server/target/scala-2.12/server.jar -p %%x -s localhost:45678 & pause"	
+for /l %%x in (45681,1,45685) do (
+	timeout 10
+	start "%%x" cmd /c "java -jar server/target/scala-2.12/server.jar -p %%x -s localhost:45678 & pause"	
 )
 
-timeout 10
-cd ..\c
-start "4" cmd /c "call java -jar client/target/scala-2.12/client.jar -p 56787 -s localhost:45678 & pause"
+::timeout 30
+::cd ..\c
+::start "4" cmd /c "call java -jar client/target/scala-2.12/client.jar -p 56787 -s localhost:45678 & pause"

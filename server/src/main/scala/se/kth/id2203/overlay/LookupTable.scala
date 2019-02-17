@@ -21,11 +21,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package se.kth.id2203.overlay;
+package se.kth.id2203.overlay
+
+;
 
 import com.larskroll.common.collections._
-import java.util.Collection
-
 import se.kth.id2203.bootstrapping.NodeAssignment
 import se.kth.id2203.networking.NetAddress
 
@@ -40,7 +40,7 @@ class LookupTable extends NodeAssignment with Serializable {
     val keyHash = key.hashCode();
     val partition = partitions.floor(keyHash) match {
       case Some(k) => k
-      case None    => partitions.lastKey
+      case None => partitions.lastKey
     }
     return partitions(partition);
   }
@@ -61,18 +61,17 @@ class LookupTable extends NodeAssignment with Serializable {
 
 object LookupTable {
   // TODO generate static partitions
-  def generate(nodes: Set[NetAddress], delta : Int): LookupTable = {
+  def generate(nodes: Set[NetAddress], delta: Int): LookupTable = {
     val lut = new LookupTable()
     var counter = 0
-    var set :mutable.Set[NetAddress] = mutable.Set.empty
-    for( netAddress <- nodes){
-      set+=netAddress
-      if(set.size == delta){
+    var set: mutable.Set[NetAddress] = mutable.Set.empty
+    for (netAddress <- nodes) {
+      set += netAddress
+      if (set.size == delta) {
         lut.partitions ++= (counter -> set)
-        counter+=1
+        counter += 1
         set.clear()
       }
-
     }
     lut
   }

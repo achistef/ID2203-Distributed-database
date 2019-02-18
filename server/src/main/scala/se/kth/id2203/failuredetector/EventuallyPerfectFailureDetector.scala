@@ -37,7 +37,6 @@ class EPFD(epfdInit: Init[EPFD]) extends ComponentDefinition {
   var topology: List[NetAddress] = List.empty;
 
   val delta = cfg.getValue[Long]("id2203.project.failureDetectorInterval");
-  println("DELTA SET TO " + delta)
   //mutable state
   var period = cfg.getValue[Long]("id2203.project.failureDetectorInterval");
   var alive = Set[NetAddress]();
@@ -52,20 +51,18 @@ class EPFD(epfdInit: Init[EPFD]) extends ComponentDefinition {
 
   timer uponEvent {
     case CheckTimeout(_) => handle {
-      println("Received timeout!")
       if (alive.intersect(suspected).nonEmpty) {
         period += delta;
-        println("New period "+ period)
       }
       seqnum = seqnum + 1;
       for (p <- topology) {
         if (!alive.contains(p) && !suspected.contains(p)) {
           suspected += p;
-          println(s"-----------------------$seqnum EFPD suspected $p");
+          println(s"----------------------- EFPD suspected $p");
           trigger(Suspect(p) -> epfd);
         } else if (alive.contains(p) && suspected.contains(p)) {
           suspected = suspected - p;
-          println(s"-----------------------$seqnum EFPD restored $p");
+          println(s"----------------------- EFPD restored $p");
           trigger(Restore(p) -> epfd);
         }
         trigger(NetMessage(self, p, HeartbeatRequest(seqnum)) -> pLink);
@@ -77,26 +74,21 @@ class EPFD(epfdInit: Init[EPFD]) extends ComponentDefinition {
 
   pLink uponEvent {
     case NetMessage(src, HeartbeatRequest(seq)) => handle {
-      trigger(NetMessage(src, HeartbeatReply(seq)) -> pLink);
+      trigger(NetMessage(self, src.src, HeartbeatReply(seq)) -> pLink);
     }
     case NetMessage(src, HeartbeatReply(seq)) => handle {
       if (seq == seqnum || suspected.contains(src.src))
-        alive += src.src;
+        alive = alive + src.src;
     }
   }
 
   epfd uponEvent {
     case StartDetector(nodes: Set[NetAddress]) => handle {
-
       // start detector for the nodes in particular partition
       topology = nodes.toList;
       suspected = Set[NetAddress]();
       alive = topology.toSet
-      seqnum = 0;
       startTimer(period);
-      println("/////////////////////////////////");
-      println(s"STARTED EPFD FOR PARTITION $nodes");
-      println("/////////////////////////////////");
     }
   }
 

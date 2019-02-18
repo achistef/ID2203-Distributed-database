@@ -23,11 +23,13 @@
  */
 package se.kth.id2203.overlay;
 
-import se.kth.id2203.bootstrapping._;
-import se.kth.id2203.networking._;
-import se.sics.kompics.sl._;
-import se.sics.kompics.network.Network;
-import se.sics.kompics.timer.Timer;
+import se.kth.id2203.bootstrapping._
+import se.kth.id2203.failuredetector.{EventuallyPerfectFailureDetector, StartDetector}
+import se.kth.id2203.networking._
+import se.sics.kompics.sl._
+import se.sics.kompics.network.Network
+import se.sics.kompics.timer.Timer
+
 import util.Random;
 
 /**
@@ -47,6 +49,7 @@ class VSOverlayManager extends ComponentDefinition {
   val boot = requires(Bootstrapping);
   val net = requires[Network];
   val timer = requires[Timer];
+  val epfd = requires[EventuallyPerfectFailureDetector]
   //******* Fields ******
   val self = cfg.getValue[NetAddress]("id2203.project.address");
   private var lut: Option[LookupTable] = None;
@@ -63,7 +66,22 @@ class VSOverlayManager extends ComponentDefinition {
     case Booted(assignment: LookupTable) => handle {
       log.info("Got NodeAssignment, overlay ready.");
       lut = Some(assignment);
-      println(lut.toString)
+      println(lut.toString);
+
+      println("--------------------------------------")
+      println("Starting the failure detector...");
+      println("--------------------------------------")
+      // detector for all
+      // trigger(StartDetector(assignment.getNodes()) -> epfd);
+
+      // detector by partition
+      for((_, partNodes) <- assignment.partitions) {
+        var nodes: Set[NetAddress] = Set.empty;
+        for(node <- partNodes)
+          nodes += node;
+        trigger(StartDetector(nodes) -> epfd);    // trigger EPFD for each partition
+        nodes.empty;
+      }
     }
   }
 

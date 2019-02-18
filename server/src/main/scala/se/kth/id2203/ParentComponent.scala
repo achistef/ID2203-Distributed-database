@@ -24,12 +24,12 @@
 package se.kth.id2203;
 
 import se.kth.id2203.bootstrapping._
-import se.kth.id2203.kvstore.KVService;
-import se.kth.id2203.networking.NetAddress;
+import se.kth.id2203.failuredetector.{EPFD, EventuallyPerfectFailureDetector}
+import se.kth.id2203.kvstore.KVService
+import se.kth.id2203.networking.NetAddress
 import se.kth.id2203.overlay._
-import se.sics.kompics.sl._
-import se.sics.kompics.Init;
-import se.sics.kompics.network.Network;
+import se.sics.kompics.sl.{Init, _}
+import se.sics.kompics.network.Network
 import se.sics.kompics.timer.Timer;
 
 class ParentComponent extends ComponentDefinition {
@@ -44,6 +44,8 @@ class ParentComponent extends ComponentDefinition {
     case Some(_) => create(classOf[BootstrapClient], Init.NONE); // start in client mode
     case None    => create(classOf[BootstrapServer], Init.NONE); // start in server mode
   }
+  val self = cfg.getValue[NetAddress]("id2203.project.address");
+  val epfd = create(classOf[EPFD], Init[EPFD](self));
 
   {
     connect[Timer](timer -> boot);
@@ -51,8 +53,12 @@ class ParentComponent extends ComponentDefinition {
     // Overlay
     connect(Bootstrapping)(boot -> overlay);
     connect[Network](net -> overlay);
+    connect[EventuallyPerfectFailureDetector](epfd -> overlay);
     // KV
     connect(Routing)(overlay -> kv);
     connect[Network](net -> kv);
+    // EPFD
+    connect[Timer](timer -> epfd);
+    connect[Network](net -> epfd);
   }
 }

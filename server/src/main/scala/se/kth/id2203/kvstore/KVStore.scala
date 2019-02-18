@@ -45,10 +45,13 @@ class KVService extends ComponentDefinition {
   }
 
 
-
   //******* Handlers ******
   net uponEvent {
     // TODO this is shown in server side
+    case NetMessage(header, op: Op ) => handle {
+      log.info("Got op operation {}!", op);
+      trigger(NetMessage(self, header.src, op.response(OpCode.Ok, None)) -> net);
+    }
     case NetMessage(header, get: Get ) => handle {
       log.info("Got GET operation {}!", get);
       val result = if(store contains get.key) Some(store(get.key)) else None

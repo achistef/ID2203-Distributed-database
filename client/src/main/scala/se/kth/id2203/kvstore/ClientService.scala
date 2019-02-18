@@ -75,7 +75,7 @@ class ClientService extends ComponentDefinition {
       val tc = new Thread(c);
       tc.start();
     }
-    case NetMessage(header, or @ OpResponse(id, status)) => handle {
+    case NetMessage(header, or @ OpResponse(id, status, value)) => handle {
       log.debug(s"Got OpResponse: $or");
       pending.remove(id) match {
         case Some(promise) => promise.success(or);
@@ -104,24 +104,9 @@ class ClientService extends ComponentDefinition {
     }
   }
 
-  def op(op : Op): Future[OpResponse] = {
+  def op(op : Operation): Future[OpResponse] = {
     val owf = OpWithPromise(op);
     trigger(owf -> onSelf);
     owf.promise.future
-  }
-
-  def get(key: String): Future[OpResponse] = {
-    val op = Get(key);
-    this.op(op)
-  }
-
-  def put(key: String, value: String): Future[OpResponse] = {
-    val op = Put(key, value);
-    op(op)
-  }
-
-  def cas(key: String, oldValue: String, newValue: String): Future[OpResponse] = {
-    val op = Cas(key, oldValue, newValue);
-    op(op)
   }
 }

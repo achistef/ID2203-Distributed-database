@@ -43,28 +43,14 @@ class ClientConsole(val service: ClientService) extends CommandConsole with Pars
   override def layout: Layout = colouredLayout;
   override def onInterrupt(): Unit = exit();
 
-  val casCommand = parsed(P("cas" ~ " " ~ simpleStr~ " " ~ simpleStr~ " " ~ simpleStr), usage = "cas <key> <oldValue> <newValue>", descr = "Executes put <key> <newValue> if get <key> equals <oldValue>") { tuple =>
-    println(s"Op with $tuple");
-
-    val fr = service.cas(tuple._1, tuple._2, tuple._3);
-    out.println("Operation sent! Awaiting response...");
-    try {
-      val r = Await.result(fr, 5.seconds);
-      // TODO : this is the source of the response
-      out.println("Operation complete! Response was: " + r.status);
-    } catch {
-      case e: Throwable => logger.error("Error during op.", e);
-    }
-  };
-
   val getCommand = parsed(P("get" ~ " " ~ simpleStr), usage = "get <key>", descr = "Executes a get for <key>.") { key =>
     println(s"Get with $key");
 
-    val fr = service.get(key);
+    val fr = service.op(Get(key));
     out.println("Operation sent! Awaiting response...");
     try {
       val r = Await.result(fr, 5.seconds);
-      out.println("Operation complete! Response was: " + r.status);
+      out.println("Operation complete! Response was: " + r.status + ", Returned value: " + r.value);
     } catch {
       case e: Throwable => logger.error("Error during get.", e);
     }
@@ -73,13 +59,27 @@ class ClientConsole(val service: ClientService) extends CommandConsole with Pars
   val putCommand = parsed(P("put" ~ " " ~ simpleStr ~ " " ~ simpleStr), usage = "put <key> <value>", descr = "Executes a put for <key> and <value>.") { tuple =>
     println(s"Put with $tuple")
 
-    val fr = service.put(tuple._1, tuple._2);
+    val fr = service.op(Put(tuple._1, tuple._2));
     out.println("Operation sent! Awaiting response...");
     try {
       val r = Await.result(fr, 5.seconds);
       out.println("Operation complete! Response was: " + r.status);
     } catch {
       case e: Throwable => logger.error("Error during put.", e);
+    }
+  };
+
+  val casCommand = parsed(P("cas" ~ " " ~ simpleStr~ " " ~ simpleStr~ " " ~ simpleStr), usage = "cas <key> <oldValue> <newValue>", descr = "Executes put <key> <newValue> if get <key> equals <oldValue>") { tuple =>
+    println(s"Op with $tuple");
+
+    val fr = service.op(Cas(tuple._1, tuple._2, tuple._3));
+    out.println("Operation sent! Awaiting response...");
+    try {
+      val r = Await.result(fr, 5.seconds);
+      // TODO : this is the source of the response
+      out.println("Operation complete! Response was: " + r.status + ", Returned value: "+ r.value);
+    } catch {
+      case e: Throwable => logger.error("Error during op.", e);
     }
   };
 

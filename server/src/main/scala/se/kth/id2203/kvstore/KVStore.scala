@@ -23,10 +23,12 @@
  */
 package se.kth.id2203.kvstore;
 
-import se.kth.id2203.networking._;
-import se.kth.id2203.overlay.Routing;
-import se.sics.kompics.sl._;
-import se.sics.kompics.network.Network;
+import se.kth.id2203.networking._
+import se.kth.id2203.overlay.Routing
+import se.sics.kompics.sl._
+import se.sics.kompics.network.Network
+
+import scala.collection.mutable;
 
 class KVService extends ComponentDefinition {
 
@@ -35,20 +37,30 @@ class KVService extends ComponentDefinition {
   val route = requires(Routing);
   //******* Fields ******
   val self = cfg.getValue[NetAddress]("id2203.project.address");
+
+  // members
+  val store = mutable.Map.empty[String,String]
+  for(i <- 1 to 10){
+    store += ((i.toString,(10-i).toString))
+  }
+
+
+
   //******* Handlers ******
   net uponEvent {
     // TODO this is shown in server side
     case NetMessage(header, get: Get ) => handle {
       log.info("Got GET operation {}!", get);
-      trigger(NetMessage(self, header.src, get.response(OpCode.Ok)) -> net);
+      val result = if(store contains get.key) Some(store(get.key)) else None
+      trigger(NetMessage(self, header.src, get.response(OpCode.Ok, result)) -> net);
     }
     case NetMessage(header, put: Put ) => handle {
       log.info("Got PUT operation {}!", put);
-      trigger(NetMessage(self, header.src, put.response(OpCode.Ok)) -> net);
+      trigger(NetMessage(self, header.src, put.response(OpCode.Ok, None)) -> net);
     }
     case NetMessage(header, cas: Cas ) => handle {
       log.info("Got CAS operation {}!", cas);
-      trigger(NetMessage(self, header.src, cas.response(OpCode.Ok)) -> net);
+      trigger(NetMessage(self, header.src, cas.response(OpCode.Ok, None)) -> net);
     }
 
   }

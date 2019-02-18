@@ -75,12 +75,15 @@ class VSOverlayManager extends ComponentDefinition {
       // trigger(StartDetector(assignment.getNodes()) -> epfd);
 
       // detector by partition
-      for((_, partNodes) <- assignment.partitions) {
-        var nodes: Set[NetAddress] = Set.empty;
-        for(node <- partNodes)
-          nodes += node;
-        trigger(StartDetector(nodes) -> epfd);    // trigger EPFD for each partition
-        nodes.empty;
+      val myPartitionTuple = assignment.partitions.find(_._2.exists(_.equals(self)))
+      myPartitionTuple match {
+        case Some((index, myPartition)) => {
+          trigger(StartDetector(myPartition.toSet) -> epfd)
+        }
+        case None => {
+          println("CANNOT FIND MY PARTITION")
+          throw new Exception(self + " Could not find its own partition in lookup table!")
+        }
       }
     }
   }

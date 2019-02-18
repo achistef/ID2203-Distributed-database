@@ -1,6 +1,6 @@
 cd %~dp0
 
-::call sbt clean compile test server/assembly client/assembly
+call sbt clean compile test server/assembly client/assembly
 
 xcopy /e /y .\common .\test\s\common\
 xcopy /e /y .\common .\test\c\common\
@@ -28,7 +28,3 @@ for /l %%x in (%base%,1,%top%) do (
 	timeout 1
 	start "%%x" cmd /c "java -jar server/target/scala-2.12/server.jar -p %%x -s localhost:45678 & pause"	
 )
-
-REM timeout 30
-REM cd ..\c
-REM start "4" cmd /c "call java -jar client/target/scala-2.12/client.jar -p 56787 -s localhost:45678 & pause"

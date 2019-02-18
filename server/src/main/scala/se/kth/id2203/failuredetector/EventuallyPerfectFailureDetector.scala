@@ -35,10 +35,11 @@ class EPFD(epfdInit: Init[EPFD]) extends ComponentDefinition {
   //configuration parameters
   val self = epfdInit match {case Init(s: NetAddress) => s};
   var topology: List[NetAddress] = List.empty;
-  val delta = cfg.getValue[Long]("id2203.project.keepAlivePeriod");
 
+  val delta = cfg.getValue[Long]("id2203.project.failureDetectorInterval");
+  println("DELTA SET TO " + delta)
   //mutable state
-  var period = cfg.getValue[Long]("id2203.project.keepAlivePeriod");
+  var period = cfg.getValue[Long]("id2203.project.failureDetectorInterval");
   var alive = Set[NetAddress]();
   var suspected = Set[NetAddress]();
   var seqnum = 0;
@@ -49,25 +50,22 @@ class EPFD(epfdInit: Init[EPFD]) extends ComponentDefinition {
     trigger(scheduledTimeout -> timer);
   }
 
-  //EPFD event handlers
-  ctrl uponEvent {
-    case _: Start => handle {
-    }
-  }
-
   timer uponEvent {
     case CheckTimeout(_) => handle {
-      if (!alive.intersect(suspected).isEmpty) {
+      println("Received timeout!")
+      if (alive.intersect(suspected).nonEmpty) {
         period += delta;
+        println("New period "+ period)
       }
       seqnum = seqnum + 1;
       for (p <- topology) {
         if (!alive.contains(p) && !suspected.contains(p)) {
           suspected += p;
-          println(s"-----------------------EFPD suspected $p");
+          println(s"-----------------------$seqnum EFPD suspected $p");
           trigger(Suspect(p) -> epfd);
         } else if (alive.contains(p) && suspected.contains(p)) {
           suspected = suspected - p;
+          println(s"-----------------------$seqnum EFPD restored $p");
           trigger(Restore(p) -> epfd);
         }
         trigger(NetMessage(self, p, HeartbeatRequest(seqnum)) -> pLink);
@@ -79,22 +77,23 @@ class EPFD(epfdInit: Init[EPFD]) extends ComponentDefinition {
 
   pLink uponEvent {
     case NetMessage(src, HeartbeatRequest(seq)) => handle {
-      trigger(NetMessage(src, HeartbeatRequest(seq)) -> pLink);
+      trigger(NetMessage(src, HeartbeatReply(seq)) -> pLink);
     }
     case NetMessage(src, HeartbeatReply(seq)) => handle {
-      if (seq == seqnum && suspected.contains(src.src))
+      if (seq == seqnum || suspected.contains(src.src))
         alive += src.src;
     }
   }
 
   epfd uponEvent {
     case StartDetector(nodes: Set[NetAddress]) => handle {
+
       // start detector for the nodes in particular partition
-      startTimer(period);
       topology = nodes.toList;
       suspected = Set[NetAddress]();
-      alive = Set(topology: _*);
+      alive = topology.toSet
       seqnum = 0;
+      startTimer(period);
       println("/////////////////////////////////");
       println(s"STARTED EPFD FOR PARTITION $nodes");
       println("/////////////////////////////////");
@@ -102,3 +101,5 @@ class EPFD(epfdInit: Init[EPFD]) extends ComponentDefinition {
   }
 
 };
+
+

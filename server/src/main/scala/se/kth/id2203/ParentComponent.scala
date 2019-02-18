@@ -48,6 +48,7 @@ class ParentComponent extends ComponentDefinition {
   val epfd = create(classOf[EPFD], Init[EPFD](self));
 
   {
+    // BOOT
     connect[Timer](timer -> boot);
     connect[Network](net -> boot);
     // Overlay

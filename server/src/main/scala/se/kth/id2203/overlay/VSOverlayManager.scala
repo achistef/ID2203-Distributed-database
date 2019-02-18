@@ -93,11 +93,11 @@ class VSOverlayManager extends ComponentDefinition {
       println(" ---------------------")
       lut match {
         case Some(l) => {
-          log.debug("Accepting connection request from ${header.src}");
+          log.debug(s"Accepting connection request from ${header.src}");
           val size = l.getNodes().size;
           trigger (NetMessage(self, header.src, msg.ack(size)) -> net);
         }
-        case None => log.info("Rejecting connection request from ${header.src}, as system is not ready, yet.");
+        case None => log.info(s"Rejecting connection request from ${header.src}, as system is not ready, yet.");
       }
     }
   }

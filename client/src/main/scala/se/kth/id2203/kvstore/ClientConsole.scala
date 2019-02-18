@@ -57,4 +57,30 @@ class ClientConsole(val service: ClientService) extends CommandConsole with Pars
     }
   };
 
+  val getCommand = parsed(P("get" ~ " " ~ simpleStr), usage = "get <key>", descr = "Executes a get for <key>.") { key =>
+    println(s"Get with $key");
+
+    val fr = service.get(key);
+    out.println("Operation sent! Awaiting response...");
+    try {
+      val r = Await.result(fr, 5.seconds);
+      out.println("Operation complete! Response was: " + r.status);
+    } catch {
+      case e: Throwable => logger.error("Error during get.", e);
+    }
+  };
+
+  val putCommand = parsed(P("put" ~ " " ~ simpleStr), usage = "put <key> <value>", descr = "Executes a put for <key> and <value>.") { (key, value) =>
+    println(s"Put with $key and $value");
+
+    val fr = service.put(key, value);
+    out.println("Operation sent! Awaiting response...");
+    try {
+      val r = Await.result(fr, 5.seconds);
+      out.println("Operation complete! Response was: " + r.status);
+    } catch {
+      case e: Throwable => logger.error("Error during put.", e);
+    }
+  };
+
 }

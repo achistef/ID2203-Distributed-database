@@ -43,10 +43,10 @@ class ClientConsole(val service: ClientService) extends CommandConsole with Pars
   override def layout: Layout = colouredLayout;
   override def onInterrupt(): Unit = exit();
 
-  val opCommand = parsed(P("op" ~ " " ~ simpleStr), usage = "op <key>", descr = "Executes an op for <key>.") { key =>
-    println(s"Op with $key");
+  val casCommand = parsed(P("cas" ~ " " ~ simpleStr~ " " ~ simpleStr~ " " ~ simpleStr), usage = "cas <key> <oldValue> <newValue>", descr = "Executes put <key> <newValue> if get <key> equals <oldValue>") { tuple =>
+    println(s"Op with $tuple");
 
-    val fr = service.op(key);
+    val fr = service.cas(tuple._1, tuple._2, tuple._3);
     out.println("Operation sent! Awaiting response...");
     try {
       val r = Await.result(fr, 5.seconds);
@@ -70,10 +70,10 @@ class ClientConsole(val service: ClientService) extends CommandConsole with Pars
     }
   };
 
-  val putCommand = parsed(P("put" ~ " " ~ simpleStr), usage = "put <key> <value>", descr = "Executes a put for <key> and <value>.") { (key, value) =>
-    println(s"Put with $key and $value");
+  val putCommand = parsed(P("put" ~ " " ~ simpleStr ~ " " ~ simpleStr), usage = "put <key> <value>", descr = "Executes a put for <key> and <value>.") { tuple =>
+    println(s"Put with $tuple")
 
-    val fr = service.put(key, value);
+    val fr = service.put(tuple._1, tuple._2);
     out.println("Operation sent! Awaiting response...");
     try {
       val r = Await.result(fr, 5.seconds);

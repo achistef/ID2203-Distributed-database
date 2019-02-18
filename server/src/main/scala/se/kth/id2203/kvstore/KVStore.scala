@@ -38,17 +38,18 @@ class KVService extends ComponentDefinition {
   //******* Handlers ******
   net uponEvent {
     // TODO this is shown in server side
-    case NetMessage(header, op: Op ) => handle {
-      log.info("Got operation {}! Now implement me please :)", op);
-      trigger(NetMessage(self, header.src, op.response(OpCode.NotImplemented)) -> net);
-    }
     case NetMessage(header, get: Get ) => handle {
       log.info("Got GET operation {}!", get);
-      trigger(NetMessage(self, header.src, get.response(OpCode.NotImplemented)) -> net);
+      trigger(NetMessage(self, header.src, get.response(OpCode.Ok)) -> net);
     }
     case NetMessage(header, put: Put ) => handle {
       log.info("Got PUT operation {}!", put);
-      trigger(NetMessage(self, header.src, put.response(OpCode.NotImplemented)) -> net);
+      trigger(NetMessage(self, header.src, put.response(OpCode.Ok)) -> net);
     }
+    case NetMessage(header, cas: Cas ) => handle {
+      log.info("Got CAS operation {}!", cas);
+      trigger(NetMessage(self, header.src, cas.response(OpCode.Ok)) -> net);
+    }
+
   }
 }

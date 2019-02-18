@@ -72,6 +72,7 @@ class BootstrapClient extends ComponentDefinition {
         case Started => {
           trigger(NetMessage(self, server, Ready) -> net);
           suicide();
+          // TODO add EPFD
         }
       }
     }

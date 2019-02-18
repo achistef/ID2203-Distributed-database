@@ -104,6 +104,7 @@ class BootstrapServer extends ComponentDefinition {
         }
         case Done => {
           suicide();
+          // TODO add EPFD
         }
       }
     }

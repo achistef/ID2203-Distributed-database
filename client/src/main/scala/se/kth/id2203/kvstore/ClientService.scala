@@ -104,8 +104,7 @@ class ClientService extends ComponentDefinition {
     }
   }
 
-  def op(key: String): Future[OpResponse] = {
-    val op = Op(key);
+  def op(op : Op): Future[OpResponse] = {
     val owf = OpWithPromise(op);
     trigger(owf -> onSelf);
     owf.promise.future
@@ -113,15 +112,16 @@ class ClientService extends ComponentDefinition {
 
   def get(key: String): Future[OpResponse] = {
     val op = Get(key);
-    val owf = OpWithPromise(op);
-    trigger(owf -> onSelf);
-    owf.promise.future
+    this.op(op)
   }
 
   def put(key: String, value: String): Future[OpResponse] = {
     val op = Put(key, value);
-    val owf = OpWithPromise(op);
-    trigger(owf -> onSelf);
-    owf.promise.future
+    op(op)
+  }
+
+  def cas(key: String, oldValue: String, newValue: String): Future[OpResponse] = {
+    val op = Cas(key, oldValue, newValue);
+    op(op)
   }
 }

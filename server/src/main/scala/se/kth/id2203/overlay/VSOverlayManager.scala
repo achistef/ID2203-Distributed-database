@@ -71,8 +71,6 @@ class VSOverlayManager extends ComponentDefinition {
       println("--------------------------------------")
       println("Starting the failure detector...");
       println("--------------------------------------")
-      // detector for all
-      // trigger(StartDetector(assignment.getNodes()) -> epfd);
 
       // detector by partition
       val myPartitionTuple = assignment.partitions.find(_._2.exists(_.equals(self)))

@@ -40,7 +40,7 @@ class KVService extends ComponentDefinition {
 
   // members
   val store = mutable.Map.empty[String,String]
-  for(i <- 1 to 10){
+  for(i <- 0 to 10){
     store += ((i.toString,(10-i).toString))
   }
 

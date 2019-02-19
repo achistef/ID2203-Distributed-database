@@ -48,12 +48,11 @@ class ScenarioClient extends ComponentDefinition {
     case _: Start => handle {
       val messages = SimulationResult[Int]("messages");
       for (i <- 0 to messages) {
-        val op = new Get(s"test$i");
+        val op = new Get(i.toString);
         val routeMsg = RouteMsg(op.key, op); // don't know which partition is responsible, so ask the bootstrap server to forward it
         trigger(NetMessage(self, server, routeMsg) -> net);
         pending += (op.id -> op.key);
         logger.info("Sending {}", op);
-        SimulationResult += (op.key -> "Sent");
       }
     }
   }
@@ -62,7 +61,7 @@ class ScenarioClient extends ComponentDefinition {
     case NetMessage(header, or @ OpResponse(id, status, value)) => handle {
       logger.debug(s"Got OpResponse: $or");
       pending.remove(id) match {
-        case Some(key) => SimulationResult += (key -> status.toString());
+        case Some(key) => SimulationResult += (key -> value.get);
         case None      => logger.warn("ID $id was not pending! Ignoring response.");
       }
     }

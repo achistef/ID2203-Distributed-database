@@ -23,9 +23,11 @@
  */
 package se.kth.id2203.overlay;
 
+import se.kth.id2203.beb.{BEB_Broadcast, BEB_Deliver, BestEffortBroadcast, SetTopology}
 import se.kth.id2203.bootstrapping._
 import se.kth.id2203.failuredetector.{EventuallyPerfectFailureDetector, StartDetector}
 import se.kth.id2203.networking._
+import se.sics.kompics.KompicsEvent
 import se.sics.kompics.sl._
 import se.sics.kompics.network.Network
 import se.sics.kompics.timer.Timer
@@ -42,6 +44,8 @@ import util.Random;
  * <p>
  * @author Lars Kroll <lkroll@kth.se>
  */
+case class TEST (payload: String) extends KompicsEvent;
+
 class VSOverlayManager extends ComponentDefinition {
 
   //******* Ports ******
@@ -50,10 +54,19 @@ class VSOverlayManager extends ComponentDefinition {
   val net = requires[Network];
   val timer = requires[Timer];
   val epfd = requires[EventuallyPerfectFailureDetector]
+  val beb = requires[BestEffortBroadcast];
   //******* Fields ******
   val self = cfg.getValue[NetAddress]("id2203.project.address");
   private var lut: Option[LookupTable] = None;
   //******* Handlers ******
+  beb uponEvent {
+    case BEB_Deliver(src, payload) => handle {
+      println("************************")
+      println(s"(BEB) Received broadcast from $src with $payload");
+      println("************************")
+    }
+  }
+
   boot uponEvent {
     // TODO boot related
     case GetInitialAssignments(nodes) => handle {
@@ -78,7 +91,14 @@ class VSOverlayManager extends ComponentDefinition {
       val myPartitionTuple = assignment.partitions.find(_._2.exists(_.equals(self)))
       myPartitionTuple match {
         case Some((index, myPartition)) => {
-          trigger(StartDetector(myPartition.toSet) -> epfd)
+
+          println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><")
+          println(s"Partition: $myPartition");
+          println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><")
+
+          trigger(StartDetector(myPartition.toSet) -> epfd);
+          trigger(SetTopology(myPartition.toSet) -> beb);
+          trigger(BEB_Broadcast(TEST(s"$self says hi")) -> beb);
         }
         case None => {
           println("CANNOT FIND MY PARTITION")
@@ -103,6 +123,7 @@ class VSOverlayManager extends ComponentDefinition {
       val i = Random.nextInt(nodes.size);
       val target = nodes.drop(i).head;
       log.info(s"Forwarding message for key $key to $target");
+      trigger(BEB_Broadcast(msg) -> beb);
       trigger(NetMessage(header.src, target, msg) -> net);
     }
     case NetMessage(header, msg: Connect) => handle {

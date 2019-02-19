@@ -23,6 +23,7 @@
  */
 package se.kth.id2203;
 
+import se.kth.id2203.beb._
 import se.kth.id2203.bootstrapping._
 import se.kth.id2203.failuredetector.{EPFD, EventuallyPerfectFailureDetector}
 import se.kth.id2203.kvstore.KVService
@@ -47,6 +48,8 @@ class ParentComponent extends ComponentDefinition {
   val self = cfg.getValue[NetAddress]("id2203.project.address");
   val epfd = create(classOf[EPFD], Init[EPFD](self));
 
+  val beb = create(classOf[BasicBroadcast], Init[BasicBroadcast](self));
+
   {
     // BOOT
     connect[Timer](timer -> boot);
@@ -55,11 +58,15 @@ class ParentComponent extends ComponentDefinition {
     connect(Bootstrapping)(boot -> overlay);
     connect[Network](net -> overlay);
     connect[EventuallyPerfectFailureDetector](epfd -> overlay);
+    connect[BestEffortBroadcast](beb -> overlay)
     // KV
     connect(Routing)(overlay -> kv);
     connect[Network](net -> kv);
     // EPFD
     connect[Timer](timer -> epfd);
     connect[Network](net -> epfd);
+    // BEB
+
+
   }
 }

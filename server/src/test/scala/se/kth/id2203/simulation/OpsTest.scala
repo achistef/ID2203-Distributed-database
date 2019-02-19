@@ -39,35 +39,17 @@ class OpsTest extends FlatSpec with Matchers {
 
   private val nMessages = 10;
 
-  //  "Classloader" should "be something" in {
-  //    val cname = classOf[SimulationResultSingleton].getCanonicalName();
-  //    var cl = classOf[SimulationResultSingleton].getClassLoader;
-  //    var i = 0;
-  //    while (cl != null) {
-  //      val res = try {
-  //        val c = cl.loadClass(cname);
-  //        true
-  //      } catch {
-  //        case t: Throwable => false
-  //      }
-  //      println(s"$i -> ${cl.getClass.getName} has class? $res");
-  //      cl = cl.getParent();
-  //      i -= 1;
-  //    }
-  //  }
-
-//  "Simple Operations" should "not be implemented" in { // well of course eventually they should be implemented^^
-//    val seed = 123l;
-//    JSimulationScenario.setSeed(seed);
-//    val simpleBootScenario = SimpleScenario.scenario(3);
-//    val res = SimulationResultSingleton.getInstance();
-//    SimulationResult += ("messages" -> nMessages);
-//    simpleBootScenario.simulate(classOf[LauncherComp]);
-//    for (i <- 0 to nMessages) {
-//      SimulationResult.get[String](s"test$i") should be !== None;
-//      // of course the correct response should be Success not NotImplemented, but like this the test passes
-//    }
-//  }
+  "Get operation with key=[1,10]" should "return 10-key" in {
+    val seed = 123l;
+    JSimulationScenario.setSeed(seed);
+    val simpleBootScenario = SimpleScenario.scenario(6);
+    val res = SimulationResultSingleton.getInstance();
+    SimulationResult += ("messages" -> nMessages);
+    simpleBootScenario.simulate(classOf[LauncherComp]);
+    for (i <- 0 to nMessages) {
+      SimulationResult.get[String](i.toString).get shouldBe (10-i).toString;
+    }
+  }
 
 }
 

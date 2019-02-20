@@ -82,24 +82,13 @@ class VSOverlayManager extends ComponentDefinition {
     case Booted(assignment: LookupTable) => handle {
       log.info("Got NodeAssignment, overlay ready.");
       lut = Some(assignment);
-      //println(lut.toString);
-
-      //println("--------------------------------------")
-      //println("Starting the failure detector...");
-      //println("--------------------------------------")
 
       // detector by partition
       val myPartitionTuple = assignment.partitions.find(_._2.exists(_.equals(self)))
       myPartitionTuple match {
         case Some((index, myPartition)) => {
-
-//          println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><")
-//          println(s"Partition: $myPartition");
-//          println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><")
-
           trigger(StartDetector(myPartition.toSet) -> epfd);
           trigger(SetTopology(myPartition.toSet) -> beb);
-          trigger(BEB_Broadcast(TEST(s"$self says hi")) -> beb);
         }
         case None => {
           println("CANNOT FIND MY PARTITION")
@@ -110,6 +99,10 @@ class VSOverlayManager extends ComponentDefinition {
   }
 
   net uponEvent {
+
+    case NetMessage(header, RouteMsg( "Broadcast", dm: Debug)) => handle {
+      trigger(BEB_Broadcast(TEST(dm.key)) -> beb)
+    }
     case NetMessage(header, RouteMsg( "ExtractPartitionInfo", dm: Debug)) => handle {
       for(tuple <- lut.get.partitions; address<- tuple._2){
         val routeMsg = RouteMsg("PartitionInfo", Debug("PartitionInfo"))
@@ -134,7 +127,6 @@ class VSOverlayManager extends ComponentDefinition {
       val i = Random.nextInt(nodes.size);
       val target = nodes.drop(i).head;
       log.info(s"Forwarding message for key $key to $target");
-      trigger(BEB_Broadcast(msg) -> beb);
       trigger(NetMessage(header.src, target, msg) -> net);
     }
     case NetMessage(header, msg: Connect) => handle {

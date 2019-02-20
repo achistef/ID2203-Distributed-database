@@ -24,13 +24,17 @@
 package se.kth.id2203.simulation
 
 import org.scalatest._
-import se.kth.id2203.ParentComponent;
-import se.kth.id2203.networking._;
+import se.kth.id2203.ParentComponent
+import se.kth.id2203.networking._
 import se.sics.kompics.network.Address
-import java.net.{ InetAddress, UnknownHostException };
-import se.sics.kompics.sl._;
-import se.sics.kompics.sl.simulator._;
-import se.sics.kompics.simulator.{ SimulationScenario => JSimulationScenario }
+import java.net.{InetAddress, UnknownHostException}
+
+import se.sics.kompics.simulator.result.SimulationResultSingleton
+import se.sics.kompics.simulator.run.LauncherComp
+import se.sics.kompics.sl._
+import se.sics.kompics.sl.simulator._
+import se.sics.kompics.simulator.{SimulationScenario => JSimulationScenario}
+
 import scala.concurrent.duration._
 
 class OpsTest extends FlatSpec with Matchers {

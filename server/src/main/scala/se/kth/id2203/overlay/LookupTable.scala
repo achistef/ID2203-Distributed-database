@@ -23,8 +23,6 @@
  */
 package se.kth.id2203.overlay
 
-;
-
 import com.larskroll.common.collections._
 import se.kth.id2203.bootstrapping.NodeAssignment
 import se.kth.id2203.networking.NetAddress
@@ -57,10 +55,13 @@ class LookupTable extends NodeAssignment with Serializable {
     return sb.toString();
   }
 
+  def getPartitionsAsString() = {
+    partitions.map(_._2).mkString("|")
+  }
+
 }
 
 object LookupTable {
-  // TODO generate static partitions
   def generate(nodes: Set[NetAddress], delta: Int): LookupTable = {
     val lut = new LookupTable()
     var counter = 0

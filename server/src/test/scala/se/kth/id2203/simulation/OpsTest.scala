@@ -29,12 +29,15 @@ import se.kth.id2203.networking._
 import se.sics.kompics.network.Address
 import java.net.{InetAddress, UnknownHostException}
 
+import se.sics.kompics.simulator.adaptor.Operation1
+import se.sics.kompics.simulator.events.system.StartNodeEvent
 import se.sics.kompics.simulator.result.SimulationResultSingleton
 import se.sics.kompics.simulator.run.LauncherComp
 import se.sics.kompics.sl._
-import se.sics.kompics.sl.simulator._
+import se.sics.kompics.sl.simulator.{SimulationResult, _}
 import se.sics.kompics.simulator.{SimulationScenario => JSimulationScenario}
 
+import scala.collection.mutable
 import scala.concurrent.duration._
 
 class OpsTest extends FlatSpec with Matchers {
@@ -44,13 +47,47 @@ class OpsTest extends FlatSpec with Matchers {
   "Get operation with key=[0,10]" should "return 10-key" in {
     val seed = 123l;
     JSimulationScenario.setSeed(seed);
-    val simpleBootScenario = SimpleScenario.scenario(6);
+    val simpleBootScenario = SimpleScenario.scenario(6, SimpleScenario.startClientOp1);
     val res = SimulationResultSingleton.getInstance();
     SimulationResult += ("messages" -> nMessages);
     simpleBootScenario.simulate(classOf[LauncherComp]);
     for (i <- 0 to nMessages) {
-      SimulationResult.get[String](i.toString).get shouldBe (10-i).toString;
+      SimulationResult.get[String]("message"+i.toString).get shouldBe (10-i).toString;
     }
+  }
+
+  "Processes" should "have the same view of partitions" in {
+    val seed = 123l;
+    JSimulationScenario.setSeed(seed);
+    val serversCount = 6
+    val simpleBootScenario = SimpleScenario.scenario(serversCount, SimpleScenario.startClientOp2);
+    val res = SimulationResultSingleton.getInstance();
+    SimulationResult += ("debugCode1" -> "ExtractPartitionInfo");
+    simpleBootScenario.simulate(classOf[LauncherComp]);
+
+    val lutListBuffer = mutable.ListBuffer.empty[String]
+    for(i <- 1 to serversCount){
+      val r = SimulationResult.get[String]("debugCode1"+i).get
+      lutListBuffer += r
+    }
+
+    val lutList = lutListBuffer.toList
+
+    // check if all servers replied
+    lutList.size shouldBe serversCount
+
+    //check if all lut are equal
+    for(i <- 0 to 4){
+      lutList(i) shouldBe lutList(i+1)
+    }
+
+    // there should be exactly two partitions
+    val lut = lutList(0)
+    val partitions = lut.split('|')
+    partitions.size shouldBe 2
+
+    //many more checks can be added
+
   }
 
 }
@@ -92,18 +129,26 @@ object SimpleScenario {
     StartNode(selfAddr, Init.none[ParentComponent], conf);
   };
 
-  val startClientOp = Op { (self: Integer) =>
+  val startClientOp1 = Op { (self: Integer) =>
     val selfAddr = intToClientAddress(self)
     val conf = Map(
       "id2203.project.address" -> selfAddr,
       "id2203.project.bootstrap-address" -> intToServerAddress(1));
-    StartNode(selfAddr, Init.none[ScenarioClient], conf);
+    StartNode(selfAddr, Init.none[ScenarioClient1], conf);
   };
 
-  def scenario(servers: Int): JSimulationScenario = {
+  val startClientOp2 = Op { (self: Integer) =>
+    val selfAddr = intToClientAddress(self)
+    val conf = Map(
+      "id2203.project.address" -> selfAddr,
+      "id2203.project.bootstrap-address" -> intToServerAddress(1));
+    StartNode(selfAddr, Init.none[ScenarioClient2], conf);
+  };
+
+  def scenario(servers: Int, cl: Operation1[StartNodeEvent, Integer]): JSimulationScenario = {
 
     val startCluster = raise(servers, startServerOp, 1.toN).arrival(constant(1.second));
-    val startClients = raise(1, startClientOp, 1.toN).arrival(constant(1.second));
+    val startClients = raise(1, cl, 1.toN).arrival(constant(1.second));
 
     startCluster andThen
       10.seconds afterTermination startClients andThen

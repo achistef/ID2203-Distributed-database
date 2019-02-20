@@ -33,7 +33,7 @@ import se.sics.kompics.sl._
 import se.sics.kompics.network.Network
 import se.sics.kompics.timer.Timer
 
-import util.Random;
+import util.Random
 
 /**
  * The V(ery)S(imple)OverlayManager.
@@ -59,6 +59,8 @@ class VSOverlayManager extends ComponentDefinition {
   //******* Fields ******
   val self = cfg.getValue[NetAddress]("id2203.project.address");
   private var lut: Option[LookupTable] = None;
+
+
   //******* Handlers ******
   beb uponEvent {
     case BEB_Deliver(src, payload) => handle {
@@ -80,20 +82,20 @@ class VSOverlayManager extends ComponentDefinition {
     case Booted(assignment: LookupTable) => handle {
       log.info("Got NodeAssignment, overlay ready.");
       lut = Some(assignment);
-      println(lut.toString);
+      //println(lut.toString);
 
-      println("--------------------------------------")
-      println("Starting the failure detector...");
-      println("--------------------------------------")
+      //println("--------------------------------------")
+      //println("Starting the failure detector...");
+      //println("--------------------------------------")
 
       // detector by partition
       val myPartitionTuple = assignment.partitions.find(_._2.exists(_.equals(self)))
       myPartitionTuple match {
         case Some((index, myPartition)) => {
 
-          println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><")
-          println(s"Partition: $myPartition");
-          println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><")
+//          println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><")
+//          println(s"Partition: $myPartition");
+//          println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><")
 
           trigger(StartDetector(myPartition.toSet) -> epfd);
           trigger(SetTopology(myPartition.toSet) -> beb);
@@ -109,12 +111,13 @@ class VSOverlayManager extends ComponentDefinition {
 
   net uponEvent {
     case NetMessage(header, RouteMsg( "ExtractPartitionInfo", dm: Debug)) => handle {
-      println(" ---------------------")
-      println()
-      println(" RECEIVED DEBUG MSG")
-      println()
-      println(" ---------------------")
-      trigger(NetMessage(self, header.src, dm.debugResponse(OpCode.Ok, lut.get.copyAsList())) -> net)
+      for(tuple <- lut.get.partitions; address<- tuple._2){
+        val routeMsg = RouteMsg("PartitionInfo", Debug("PartitionInfo"))
+        trigger(NetMessage(header.src, address, routeMsg) -> net)
+      }
+    }
+    case NetMessage(header, RouteMsg( "PartitionInfo", dm: Debug)) => handle {
+      trigger(NetMessage(self, header.src, dm.response(OpCode.Ok, Some(lut.get.getPartitionsAsString()))) -> net)
     }
 
     // TODO routing from clients is happening here
@@ -122,7 +125,7 @@ class VSOverlayManager extends ComponentDefinition {
 
       println(" ---------------------")
       println()
-      println(" Routing message")
+      println(" Routing message ")
       println()
       println(" ---------------------")
 

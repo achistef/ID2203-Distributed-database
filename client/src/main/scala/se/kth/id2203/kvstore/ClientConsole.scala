@@ -91,11 +91,10 @@ class ClientConsole(val service: ClientService) extends CommandConsole with Pars
     out.println("Operation sent! Awaiting response...");
     try {
       val r = Await.result(fr, 5.seconds)
-      val cr = r.asInstanceOf[OpResponseDebug];
       // TODO : this is the source of the response
-      out.println("Operation complete! Response was: " + cr.status + ", Returned value: "+ cr.debugValue.asInstanceOf[List[(Int, Iterable[NetAddress])]]);
+      out.println("Operation complete! Response was: " + r.status + ", Returned value: "+ r.value);
     } catch {
-      case _ => // the promise  always throws an exception... let's not print it
+      case _: Throwable => // the promise  always throws an exception... let's not print it
     }
   };
 

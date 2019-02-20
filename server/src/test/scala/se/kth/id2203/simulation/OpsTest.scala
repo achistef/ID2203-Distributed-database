@@ -31,25 +31,23 @@ import java.net.{ InetAddress, UnknownHostException };
 import se.sics.kompics.sl._;
 import se.sics.kompics.sl.simulator._;
 import se.sics.kompics.simulator.{ SimulationScenario => JSimulationScenario }
-import se.sics.kompics.simulator.run.LauncherComp
-import se.sics.kompics.simulator.result.SimulationResultSingleton;
 import scala.concurrent.duration._
 
 class OpsTest extends FlatSpec with Matchers {
 
   private val nMessages = 10;
 
-//  "Get operation with key=[1,10]" should "return 10-key" in {
-//    val seed = 123l;
-//    JSimulationScenario.setSeed(seed);
-//    val simpleBootScenario = SimpleScenario.scenario(6);
-//    val res = SimulationResultSingleton.getInstance();
-//    SimulationResult += ("messages" -> nMessages);
-//    simpleBootScenario.simulate(classOf[LauncherComp]);
-//    for (i <- 0 to nMessages) {
-//      SimulationResult.get[String](i.toString).get shouldBe (10-i).toString;
-//    }
-//  }
+  "Get operation with key=[0,10]" should "return 10-key" in {
+    val seed = 123l;
+    JSimulationScenario.setSeed(seed);
+    val simpleBootScenario = SimpleScenario.scenario(6);
+    val res = SimulationResultSingleton.getInstance();
+    SimulationResult += ("messages" -> nMessages);
+    simpleBootScenario.simulate(classOf[LauncherComp]);
+    for (i <- 0 to nMessages) {
+      SimulationResult.get[String](i.toString).get shouldBe (10-i).toString;
+    }
+  }
 
 }
 

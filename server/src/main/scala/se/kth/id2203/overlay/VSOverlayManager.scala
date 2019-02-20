@@ -26,6 +26,7 @@ package se.kth.id2203.overlay;
 import se.kth.id2203.beb.{BEB_Broadcast, BEB_Deliver, BestEffortBroadcast, SetTopology}
 import se.kth.id2203.bootstrapping._
 import se.kth.id2203.failuredetector.{EventuallyPerfectFailureDetector, StartDetector}
+import se.kth.id2203.kvstore.{Debug, OpCode}
 import se.kth.id2203.networking._
 import se.sics.kompics.KompicsEvent
 import se.sics.kompics.sl._
@@ -84,8 +85,6 @@ class VSOverlayManager extends ComponentDefinition {
       println("--------------------------------------")
       println("Starting the failure detector...");
       println("--------------------------------------")
-      // detector for all
-      // trigger(StartDetector(assignment.getNodes()) -> epfd);
 
       // detector by partition
       val myPartitionTuple = assignment.partitions.find(_._2.exists(_.equals(self)))
@@ -109,6 +108,15 @@ class VSOverlayManager extends ComponentDefinition {
   }
 
   net uponEvent {
+    case NetMessage(header, RouteMsg( "ExtractPartitionInfo", dm: Debug)) => handle {
+      println(" ---------------------")
+      println()
+      println(" RECEIVED DEBUG MSG")
+      println()
+      println(" ---------------------")
+      trigger(NetMessage(self, header.src, dm.debugResponse(OpCode.Ok, lut.get.copyAsList())) -> net)
+    }
+
     // TODO routing from clients is happening here
     case NetMessage(header, RouteMsg(key, msg)) => handle {
 

@@ -24,10 +24,11 @@
 package se.kth.id2203.kvstore
 
 import com.larskroll.common.repl._
-import com.typesafe.scalalogging.StrictLogging;
+import com.typesafe.scalalogging.StrictLogging
 import org.apache.log4j.Layout
-import util.log4j.ColoredPatternLayout;
+import util.log4j.ColoredPatternLayout
 import fastparse.all._
+import se.kth.id2203.networking.NetAddress
 import concurrent.Await
 import concurrent.duration._
 
@@ -70,7 +71,7 @@ class ClientConsole(val service: ClientService) extends CommandConsole with Pars
   };
 
   val casCommand = parsed(P("cas" ~ " " ~ simpleStr~ " " ~ simpleStr~ " " ~ simpleStr), usage = "cas <key> <oldValue> <newValue>", descr = "Executes put <key> <newValue> if get <key> equals <oldValue>") { tuple =>
-    println(s"Op with $tuple");
+    println(s"Cas with $tuple");
 
     val fr = service.op(Cas(tuple._1, tuple._2, tuple._3));
     out.println("Operation sent! Awaiting response...");
@@ -80,6 +81,21 @@ class ClientConsole(val service: ClientService) extends CommandConsole with Pars
       out.println("Operation complete! Response was: " + r.status + ", Returned value: "+ r.value);
     } catch {
       case e: Throwable => logger.error("Error during op.", e);
+    }
+  };
+
+  val debugCommand = parsed(P("debug" ~ " " ~ simpleStr), usage = "debug <debugCodeID>", descr = "Returns the debug info associated with <debugCodeID>") { debugCodeID =>
+    println(s"Debug with $debugCodeID");
+
+    val fr = service.op(Debug(debugCodeID));
+    out.println("Operation sent! Awaiting response...");
+    try {
+      val r = Await.result(fr, 5.seconds)
+      val cr = r.asInstanceOf[OpResponseDebug];
+      // TODO : this is the source of the response
+      out.println("Operation complete! Response was: " + cr.status + ", Returned value: "+ cr.debugValue.asInstanceOf[List[(Int, Iterable[NetAddress])]]);
+    } catch {
+      case _ => // the promise  always throws an exception... let's not print it
     }
   };
 

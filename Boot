@@ -1,0 +1,39 @@
+#!/bin/bash
+
+
+echo ---Starting Bootstrap Server
+osascript -e 'tell app "Terminal"
+    do script "cd Coding/Scala/ID2203-Distributed-database/
+    java -jar server/target/scala-2.12/server.jar -p 45678"
+end tell'
+
+sleep 10
+
+myfunc2() {
+    osascript -e "tell application \"Terminal\" to do script \"
+    echo Staring server: '$1'
+    cd Coding/Scala/ID2203-Distributed-database/
+    java -jar server/target/scala-2.12/server.jar -p '$1' -s localhost:45678
+    \""
+
+}
+
+
+counter=1
+port=45680
+while [ $counter -le 5 ]
+do
+    echo __Starting server $counter on $port
+    myfunc2 $port
+    sleep 1
+    (( counter++ ))
+    (( port++ ))
+done
+
+sleep 8
+
+echo ---Starting Client
+osascript -e 'tell app "Terminal"
+    do script "cd Coding/Scala/ID2203-Distributed-database/
+    java -jar client/target/scala-2.12/client.jar -p 56787 -s localhost:45678"
+end tell'

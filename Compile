@@ -1,0 +1,11 @@
+#!/bin/bash
+
+echo --Starting sbt
+osascript -e 'tell app "Terminal"
+    do script "
+    cd Coding/Scala/ID2203-Distributed-database/
+    sbt
+    compile
+    server/assembly
+    client/assembly"
+end tell'

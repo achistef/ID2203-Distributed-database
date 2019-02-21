@@ -1,10 +1,10 @@
 package se.kth.id2203.beb
 
+import se.kth.id2203.kvstore.{Debug, OpCode}
 import se.kth.id2203.kompicsevents.{BEB_Broadcast, BEB_Deliver, SetTopology}
 import se.kth.id2203.networking.{NetAddress, NetMessage}
 import se.kth.id2203.overlay.LookupTable
-import se.sics.kompics.KompicsEvent
-import se.sics.kompics.network.{Address, Network}
+import se.sics.kompics.network.{Network}
 import se.sics.kompics.sl.{ComponentDefinition, Init, Port, handle}
 
 import scala.collection.immutable.Set
@@ -26,6 +26,11 @@ class BasicBroadcast(bebInit: Init[BasicBroadcast]) extends ComponentDefinition 
   var systemTopology: Option[LookupTable] = None
 
   beb uponEvent {
+    case msg@ BEB_Broadcast(Debug("BroadcastFlood", receiver,_))  => handle {
+      for(it <- systemTopology.get.partitions; address <- it._2)
+        trigger(NetMessage(self, address, msg) -> pLink)
+    }
+
     case x: BEB_Broadcast => handle {
       for (q <- myPartitionTopology) {
         trigger(NetMessage(self, q, x) -> pLink);
@@ -40,6 +45,10 @@ class BasicBroadcast(bebInit: Init[BasicBroadcast]) extends ComponentDefinition 
 
 
   pLink uponEvent {
+    case NetMessage(_, msg @ BEB_Broadcast( deb@ Debug("BroadcastFlood", receiver, _))) => handle {
+      trigger(NetMessage(self, receiver, deb.response(OpCode.Ok, Some("BroadcastReply"+ self))) -> pLink)
+    }
+
     case NetMessage(src, BEB_Broadcast(payload)) => handle {
       trigger(BEB_Deliver(src.src, payload) -> beb);
     }

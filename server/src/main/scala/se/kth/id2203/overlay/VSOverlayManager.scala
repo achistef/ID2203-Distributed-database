@@ -38,16 +38,15 @@ import se.sics.kompics.timer.Timer
 import util.Random
 
 /**
- * The V(ery)S(imple)OverlayManager.
- * <p>
- * Keeps all nodes in a single partition in one replication group.
- * <p>
- * Note: This implementation does not fulfill the project task. You have to
- * support multiple partitions!
- * <p>
- * @author Lars Kroll <lkroll@kth.se>
- */
-case class TEST (payload: String) extends KompicsEvent;
+  * The V(ery)S(imple)OverlayManager.
+  * <p>
+  * Keeps all nodes in a single partition in one replication group.
+  * <p>
+  * Note: This implementation does not fulfill the project task. You have to
+  * support multiple partitions!
+  * <p>
+  * @author Lars Kroll <lkroll@kth.se>
+  */
 
 class VSOverlayManager extends ComponentDefinition {
 
@@ -86,7 +85,6 @@ class VSOverlayManager extends ComponentDefinition {
     case Booted(assignment: LookupTable) => handle {
       log.info("Got NodeAssignment, overlay ready.");
       lut = Some(assignment);
-
       // detector by partition
       val myPartitionTuple = assignment.partitions.find(_._2.exists(_.equals(self)))
       myPartitionTuple match {
@@ -105,8 +103,8 @@ class VSOverlayManager extends ComponentDefinition {
 
   net uponEvent {
 
-    case NetMessage(header, RouteMsg( "Broadcast", dm: Debug)) => handle {
-      trigger(BEB_Broadcast(TEST(dm.key)) -> beb)
+    case NetMessage(header, RouteMsg( "BroadcastFlood", dm: Debug)) => handle {
+      trigger(BEB_Broadcast(dm) -> beb)
     }
     case NetMessage(header, RouteMsg( "ExtractPartitionInfo", dm: Debug)) => handle {
       for(tuple <- lut.get.partitions; address<- tuple._2){

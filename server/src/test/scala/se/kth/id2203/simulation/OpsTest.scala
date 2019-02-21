@@ -90,6 +90,40 @@ class OpsTest extends FlatSpec with Matchers {
 
   }
 
+  "Broadcast messages" should "reach all servers" in {
+    val seed = 123l;
+    val serversCount = 6
+    JSimulationScenario.setSeed(seed);
+    val simpleBootScenario = SimpleScenario.scenario(serversCount, SimpleScenario.startClientOp3);
+    val res = SimulationResultSingleton.getInstance();
+    SimulationResult += ("debugCode2" -> "BroadcastFlood");
+    simpleBootScenario.simulate(classOf[LauncherComp]);
+
+    val bcrListBuffer = mutable.ListBuffer.empty[String]
+    for(i <- 1 to serversCount){
+      val r = SimulationResult.get[String]("debugCode2"+i).get
+      bcrListBuffer += r
+    }
+    val bcastReplyList = bcrListBuffer.toList
+
+    //there should be exactly <serversCount> responses
+    bcastReplyList.size shouldBe serversCount
+
+    //check validity of replies
+    for(str <- bcastReplyList){
+      str.startsWith("BroadcastReply") shouldBe true
+    }
+
+    // keep only addresses
+    val bcastValues = bcastReplyList.map(_.replace("BroadcastReply",""))
+
+    //make sure all addresses are unique
+    for(i<- 0 to bcastValues.size-1 ; j<- i+1 to bcastValues.size-1){
+      bcastValues(i) != bcastValues(j) shouldBe true
+    }
+
+  }
+
 }
 
 object SimpleScenario {
@@ -115,7 +149,7 @@ object SimpleScenario {
 
   private def isBootstrap(self: Int): Boolean = self == 1;
 
-  val startServerOp = Op { (self: Integer) =>
+  val startServerOp = Op { self: Integer =>
 
     val selfAddr = intToServerAddress(self)
     val conf = if (isBootstrap(self)) {
@@ -129,7 +163,7 @@ object SimpleScenario {
     StartNode(selfAddr, Init.none[ParentComponent], conf);
   };
 
-  val startClientOp1 = Op { (self: Integer) =>
+  val startClientOp1 = Op { self: Integer =>
     val selfAddr = intToClientAddress(self)
     val conf = Map(
       "id2203.project.address" -> selfAddr,
@@ -137,12 +171,20 @@ object SimpleScenario {
     StartNode(selfAddr, Init.none[ScenarioClient1], conf);
   };
 
-  val startClientOp2 = Op { (self: Integer) =>
+  val startClientOp2 = Op { self: Integer =>
     val selfAddr = intToClientAddress(self)
     val conf = Map(
       "id2203.project.address" -> selfAddr,
       "id2203.project.bootstrap-address" -> intToServerAddress(1));
     StartNode(selfAddr, Init.none[ScenarioClient2], conf);
+  };
+
+  val startClientOp3 = Op { self: Integer =>
+    val selfAddr = intToClientAddress(self)
+    val conf = Map(
+      "id2203.project.address" -> selfAddr,
+      "id2203.project.bootstrap-address" -> intToServerAddress(1));
+    StartNode(selfAddr, Init.none[ScenarioClient3], conf);
   };
 
   def scenario(servers: Int, cl: Operation1[StartNodeEvent, Integer]): JSimulationScenario = {

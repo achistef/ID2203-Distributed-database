@@ -79,12 +79,7 @@ class BootstrapServer extends ComponentDefinition {
       state match {
         case Collecting => {
           log.info("{} hosts in active set.", active.size);
-          if (active.size >= bootThreshold) {
-            println(" --------------- ")
-            println()
-            println ("active size =  " + active.size)
-            println()
-            println(" --------------- ")
+          if (active.size == bootThreshold) {
             bootUp();
           }
         }

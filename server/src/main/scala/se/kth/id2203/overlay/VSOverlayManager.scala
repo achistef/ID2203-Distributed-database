@@ -87,8 +87,8 @@ class VSOverlayManager extends ComponentDefinition {
       val myPartitionTuple = assignment.partitions.find(_._2.exists(_.equals(self)))
       myPartitionTuple match {
         case Some((index, myPartition)) => {
-          trigger(StartDetector(myPartition.toSet) -> epfd);
-          trigger(SetTopology(myPartition.toSet) -> beb);
+          trigger(StartDetector(lut, myPartition.toSet) -> epfd);
+          trigger(SetTopology(lut, myPartition.toSet) -> beb);
         }
         case None => {
           println("CANNOT FIND MY PARTITION")

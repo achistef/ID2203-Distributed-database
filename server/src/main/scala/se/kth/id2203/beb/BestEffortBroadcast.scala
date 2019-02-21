@@ -1,6 +1,7 @@
 package se.kth.id2203.beb
 
 import se.kth.id2203.networking.{NetAddress, NetMessage}
+import se.kth.id2203.overlay.LookupTable
 import se.sics.kompics.KompicsEvent
 import se.sics.kompics.network.{Address, Network}
 import se.sics.kompics.sl.{ComponentDefinition, Init, Port, handle}
@@ -11,7 +12,7 @@ case class BEB_Deliver(src: Address, payload: KompicsEvent) extends KompicsEvent
 
 case class BEB_Broadcast(payload: KompicsEvent) extends KompicsEvent;
 
-case class SetTopology(nodes: Set[NetAddress]) extends KompicsEvent;
+case class SetTopology(lut: Option[LookupTable], nodes: Set[NetAddress]) extends KompicsEvent;
 
 class BestEffortBroadcast extends Port {
   indication[BEB_Deliver];
@@ -26,17 +27,19 @@ class BasicBroadcast(bebInit: Init[BasicBroadcast]) extends ComponentDefinition 
   var self = bebInit match {
     case Init(s: NetAddress) => s
   };
-  var topology: List[NetAddress] = List.empty;
+  var myPartitionTopology: List[NetAddress] = List.empty;
+  var systemTopology: Option[LookupTable] = None
 
   beb uponEvent {
     case x: BEB_Broadcast => handle {
-      for (q <- topology) {
+      for (q <- myPartitionTopology) {
         trigger(NetMessage(self, q, x) -> pLink);
       }
     }
 
-    case SetTopology(nodes: Set[NetAddress]) => handle {
-      topology = nodes.toList;
+    case SetTopology(lookupTable: Option[LookupTable], nodes: Set[NetAddress]) => handle {
+      systemTopology = lookupTable
+      myPartitionTopology = nodes.toList;
     }
   }
 

@@ -1,5 +1,6 @@
 package se.kth.id2203.failuredetector
 import se.kth.id2203.networking.{NetAddress, NetMessage}
+import se.kth.id2203.overlay.LookupTable
 import se.sics.kompics.network._
 import se.sics.kompics.sl.{Init, _}
 import se.sics.kompics.timer.{ScheduleTimeout, Timeout, Timer}
@@ -19,7 +20,7 @@ class EventuallyPerfectFailureDetector extends Port {
 
 case class Suspect(process: Address) extends KompicsEvent;
 case class Restore(process: Address) extends KompicsEvent;
-case class StartDetector(nodes: Set[NetAddress]) extends KompicsEvent;
+case class StartDetector(lut: Option[LookupTable], nodes: Set[NetAddress]) extends KompicsEvent;
 
 
 //Define EPFD Implementation
@@ -34,7 +35,8 @@ class EPFD(epfdInit: Init[EPFD]) extends ComponentDefinition {
 
   //configuration parameters
   val self = epfdInit match {case Init(s: NetAddress) => s};
-  var topology: List[NetAddress] = List.empty;
+  var myPartitionTopology: List[NetAddress] = List.empty;
+  var systemTopology: Option[LookupTable] = None
 
   val delta = cfg.getValue[Long]("id2203.project.failureDetectorInterval");
   //mutable state
@@ -55,7 +57,7 @@ class EPFD(epfdInit: Init[EPFD]) extends ComponentDefinition {
         period += delta;
       }
       seqnum = seqnum + 1;
-      for (p <- topology) {
+      for (p <- myPartitionTopology) {
         if (!alive.contains(p) && !suspected.contains(p)) {
           suspected += p;
           println(s"----------------------- EFPD suspected $p");
@@ -83,11 +85,12 @@ class EPFD(epfdInit: Init[EPFD]) extends ComponentDefinition {
   }
 
   epfd uponEvent {
-    case StartDetector(nodes: Set[NetAddress]) => handle {
+    case StartDetector(lookupTable: Option[LookupTable], nodes: Set[NetAddress]) => handle {
       // start detector for the nodes in particular partition
-      topology = nodes.toList;
+      systemTopology = lookupTable
+      myPartitionTopology = nodes.toList;
       suspected = Set[NetAddress]();
-      alive = topology.toSet
+      alive = myPartitionTopology.toSet
       startTimer(period);
     }
   }

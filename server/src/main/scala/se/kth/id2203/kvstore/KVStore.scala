@@ -23,8 +23,10 @@
  */
 package se.kth.id2203.kvstore;
 
+import se.kth.id2203.kompicsevents.{SC_Decide, SC_Propose}
 import se.kth.id2203.networking._
 import se.kth.id2203.overlay.Routing
+import se.kth.id2203.sequencepaxos.SequenceConsensus
 import se.sics.kompics.sl._
 import se.sics.kompics.network.Network
 
@@ -35,6 +37,7 @@ class KVService extends ComponentDefinition {
   //******* Ports ******
   val net = requires[Network];
   val route = requires(Routing);
+  val sc = requires[SequenceConsensus];
   //******* Fields ******
   val self = cfg.getValue[NetAddress]("id2203.project.address");
 
@@ -46,25 +49,27 @@ class KVService extends ComponentDefinition {
 
 
   //******* Handlers ******
-  net uponEvent {
-    // TODO this is shown in server side
-//    case NetMessage(header, op: Op ) => handle {
-//      log.info("Got op operation {}!", op);
-//      trigger(NetMessage(self, header.src, op.response(OpCode.Ok, None)) -> net);
-//    }
-    case NetMessage(header, get: Get ) => handle {
-      log.info("Got GET operation {}!", get);
-      val result = if(store contains get.key) Some(store(get.key)) else None
-      trigger(NetMessage(self, header.src, get.response(OpCode.Ok, result)) -> net);
-    }
-    case NetMessage(header, put: Put ) => handle {
-      log.info("Got PUT operation {}!", put);
-      trigger(NetMessage(self, header.src, put.response(OpCode.Ok, None)) -> net);
-    }
-    case NetMessage(header, cas: Cas ) => handle {
-      log.info("Got CAS operation {}!", cas);
-      trigger(NetMessage(self, header.src, cas.response(OpCode.Ok, None)) -> net);
+    net uponEvent {
+      // TODO this is shown in server side
+      case NetMessage(header, op: Op) => handle {
+        println("RECEIVED OPERATION FROM: ", op.source)
+        trigger(SC_Propose(op) -> sc);
+      }
     }
 
+    sc uponEvent {
+      case SC_Decide(get: Get) => handle {
+        println(s"Performed GET operation $get");
+        val result = if (store contains get.key) Some(store(get.key)) else None
+        trigger(NetMessage(self, get.source, get.response(OpCode.Ok, result)) -> net);
+      }
+      case SC_Decide(put: Put) => handle {
+        println("Performed PUT operation {}!", put);
+        trigger(NetMessage(self, put.source, put.response(OpCode.Ok, None)) -> net);
+      }
+      case SC_Decide(cas: Cas) => handle {
+        println("Performed CAS operation {}!", cas);
+        trigger(NetMessage(self, cas.source, cas.response(OpCode.Ok, None)) -> net);
+      }
   }
 }

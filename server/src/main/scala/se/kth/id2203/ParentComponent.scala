@@ -25,10 +25,11 @@ package se.kth.id2203;
 
 import se.kth.id2203.beb._
 import se.kth.id2203.bootstrapping._
-import se.kth.id2203.failuredetector.{EPFD, EventuallyPerfectFailureDetector}
+import se.kth.id2203.failuredetector._
 import se.kth.id2203.kvstore.KVService
 import se.kth.id2203.networking.NetAddress
 import se.kth.id2203.overlay._
+import se.kth.id2203.sequencepaxos.{BallotLeaderElection, GossipLeaderElection, SequenceConsensus, SequencePaxos}
 import se.sics.kompics.sl.{Init, _}
 import se.sics.kompics.network.Network
 import se.sics.kompics.timer.Timer;
@@ -47,8 +48,9 @@ class ParentComponent extends ComponentDefinition {
   }
   val self = cfg.getValue[NetAddress]("id2203.project.address");
   val epfd = create(classOf[EPFD], Init[EPFD](self));
-
   val beb = create(classOf[BasicBroadcast], Init[BasicBroadcast](self));
+  val ble = create(classOf[GossipLeaderElection], Init.NONE);
+  val seqCons = create(classOf[SequencePaxos], Init.NONE);
 
   {
     // BOOT
@@ -58,16 +60,22 @@ class ParentComponent extends ComponentDefinition {
     connect(Bootstrapping)(boot -> overlay);
     connect[Network](net -> overlay);
     connect[EventuallyPerfectFailureDetector](epfd -> overlay);
-    connect[Network](net -> beb);
-    connect[BestEffortBroadcast](beb -> overlay)
+    connect[BestEffortBroadcast](beb -> overlay);
+    connect[SequenceConsensus](seqCons -> overlay);
     // KV
     connect(Routing)(overlay -> kv);
     connect[Network](net -> kv);
+    connect[SequenceConsensus](seqCons -> kv);
     // EPFD
     connect[Timer](timer -> epfd);
     connect[Network](net -> epfd);
     // BEB
-
-
+    connect[Network](net -> beb);
+    // BLE
+    connect[Timer](timer -> ble);
+    connect[Network](net -> ble);
+    // Sequence Consensus
+    connect[Network](net -> seqCons);
+    connect[BallotLeaderElection](ble -> seqCons);
   }
 }

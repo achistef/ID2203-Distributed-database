@@ -47,7 +47,7 @@ class ClientConsole(val service: ClientService) extends CommandConsole with Pars
   val getCommand = parsed(P("get" ~ " " ~ simpleStr), usage = "get <key>", descr = "Executes a get for <key>.") { key =>
     println(s"Get with $key");
 
-    val fr = service.op(Get(key));
+    val fr = service.get(key);
     out.println("Operation sent! Awaiting response...");
     try {
       val r = Await.result(fr, 5.seconds);
@@ -60,7 +60,7 @@ class ClientConsole(val service: ClientService) extends CommandConsole with Pars
   val putCommand = parsed(P("put" ~ " " ~ simpleStr ~ " " ~ simpleStr), usage = "put <key> <value>", descr = "Executes a put for <key> and <value>.") { tuple =>
     println(s"Put with $tuple")
 
-    val fr = service.op(Put(tuple._1, tuple._2));
+    val fr = service.put(tuple._1, tuple._2);
     out.println("Operation sent! Awaiting response...");
     try {
       val r = Await.result(fr, 5.seconds);
@@ -73,11 +73,10 @@ class ClientConsole(val service: ClientService) extends CommandConsole with Pars
   val casCommand = parsed(P("cas" ~ " " ~ simpleStr~ " " ~ simpleStr~ " " ~ simpleStr), usage = "cas <key> <oldValue> <newValue>", descr = "Executes put <key> <newValue> if get <key> equals <oldValue>") { tuple =>
     println(s"Cas with $tuple");
 
-    val fr = service.op(Cas(tuple._1, tuple._2, tuple._3));
+    val fr = service.cas(tuple._1, tuple._2, tuple._3);
     out.println("Operation sent! Awaiting response...");
     try {
       val r = Await.result(fr, 5.seconds);
-      // TODO : this is the source of the response
       out.println("Operation complete! Response was: " + r.status + ", Returned value: "+ r.value);
     } catch {
       case e: Throwable => logger.error("Error during op.", e);
@@ -87,7 +86,7 @@ class ClientConsole(val service: ClientService) extends CommandConsole with Pars
   val debugCommand = parsed(P("debug" ~ " " ~ simpleStr), usage = "debug <debugCodeID>", descr = "Returns the debug info associated with <debugCodeID>") { debugCodeID =>
     println(s"Debug with $debugCodeID");
 
-    val fr = service.op(Debug(debugCodeID));
+    val fr = service.debug(debugCodeID);
     out.println("Operation sent! Awaiting response...");
     try {
       val r = Await.result(fr, 5.seconds)

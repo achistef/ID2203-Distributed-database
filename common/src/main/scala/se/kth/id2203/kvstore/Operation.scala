@@ -23,12 +23,15 @@
  */
 package se.kth.id2203.kvstore
 
-import java.util.UUID;
+import java.util.UUID
+
+import se.kth.id2203.networking.NetAddress
 import se.sics.kompics.KompicsEvent;
 
 trait Operation extends KompicsEvent {
   def id: UUID;
   def key: String;
+  def source: NetAddress;
 }
 
 @SerialVersionUID(0xfacc6612da2139eaL)
@@ -36,17 +39,17 @@ abstract class Op extends Operation {
   def response(status: OpCode.OpCode, value: Option[String]): OpResponse = OpResponse(id, status, value);
 }
 
-@SerialVersionUID(0xfacc6612da2138eaL)
-case class Get(key: String, id: UUID = UUID.randomUUID()) extends Op
+@SerialVersionUID(0xfacc6612da2139eaL)
+case class Get(key: String, source: NetAddress, id: UUID = UUID.randomUUID()) extends Op;
 
-@SerialVersionUID(0xfacc6612da2137eaL)
-case class Put(key: String, value: String, id: UUID = UUID.randomUUID()) extends Op
+@SerialVersionUID(0xfacc6612da2139eaL)
+case class Put(key: String, value: String, source: NetAddress, id: UUID = UUID.randomUUID()) extends Op
+
+@SerialVersionUID(0xfacc6612da2139eaL)
+case class Cas(key: String, oldValue:String, newValue:String, source: NetAddress, id: UUID = UUID.randomUUID()) extends Op
 
 @SerialVersionUID(0xfacc6612da2136eaL)
-case class Cas(key: String, oldValue:String, newValue:String, id: UUID = UUID.randomUUID()) extends Op
-
-@SerialVersionUID(0xfacc6612da2136eaL)
-case class Debug(key: String, id: UUID = UUID.randomUUID()) extends Op
+case class Debug(key: String, source: NetAddress, id: UUID = UUID.randomUUID()) extends Op
 
 object OpCode {
   sealed trait OpCode;

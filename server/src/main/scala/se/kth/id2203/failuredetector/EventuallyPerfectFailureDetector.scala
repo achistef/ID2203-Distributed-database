@@ -1,4 +1,5 @@
 package se.kth.id2203.failuredetector
+import se.kth.id2203.kompicsevents._
 import se.kth.id2203.networking.{NetAddress, NetMessage}
 import se.kth.id2203.overlay.LookupTable
 import se.sics.kompics.network._
@@ -7,21 +8,11 @@ import se.sics.kompics.timer.{ScheduleTimeout, Timeout, Timer}
 import se.sics.kompics.{KompicsEvent, Start, ComponentDefinition => _, Port => _}
 
 
-case class CheckTimeout(timeout: ScheduleTimeout) extends Timeout(timeout);
-case class HeartbeatReply(seq: Int) extends KompicsEvent;
-case class HeartbeatRequest(seq: Int) extends KompicsEvent;
-
-
 class EventuallyPerfectFailureDetector extends Port {
   indication[Suspect];
   indication[Restore];
   request[StartDetector];
 }
-
-case class Suspect(process: Address) extends KompicsEvent;
-case class Restore(process: Address) extends KompicsEvent;
-case class StartDetector(lut: Option[LookupTable], nodes: Set[NetAddress]) extends KompicsEvent;
-
 
 //Define EPFD Implementation
 class EPFD(epfdInit: Init[EPFD]) extends ComponentDefinition {

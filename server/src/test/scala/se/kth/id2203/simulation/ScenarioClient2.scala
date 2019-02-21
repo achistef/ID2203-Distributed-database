@@ -54,7 +54,7 @@ class ScenarioClient2 extends ComponentDefinition {
   ctrl uponEvent {
     case _: Start => handle {
       val debugCodeValue = SimulationResult[String](this.debugCode)
-      val op = new Debug(debugCodeValue)
+      val op = new Debug(debugCodeValue, self)
       val routeMsg = RouteMsg(op.key, op)
       trigger(NetMessage(self, server, routeMsg) -> net)
       logger.info("Sending {}", op)

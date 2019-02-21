@@ -23,11 +23,13 @@
  */
 package se.kth.id2203.overlay;
 
-import se.kth.id2203.beb.{BEB_Broadcast, BEB_Deliver, BestEffortBroadcast, SetTopology}
+import se.kth.id2203.beb.{BestEffortBroadcast}
 import se.kth.id2203.bootstrapping._
-import se.kth.id2203.failuredetector.{EventuallyPerfectFailureDetector, StartDetector}
-import se.kth.id2203.kvstore.{Debug, OpCode}
+import se.kth.id2203.kompicsevents._
+import se.kth.id2203.failuredetector.EventuallyPerfectFailureDetector
+import se.kth.id2203.kvstore.{Debug, Op, OpCode}
 import se.kth.id2203.networking._
+import se.kth.id2203.sequencepaxos.SequenceConsensus
 import se.sics.kompics.KompicsEvent
 import se.sics.kompics.sl._
 import se.sics.kompics.network.Network
@@ -56,6 +58,8 @@ class VSOverlayManager extends ComponentDefinition {
   val timer = requires[Timer];
   val epfd = requires[EventuallyPerfectFailureDetector]
   val beb = requires[BestEffortBroadcast];
+  var seqCons = requires[SequenceConsensus];
+
   //******* Fields ******
   val self = cfg.getValue[NetAddress]("id2203.project.address");
   private var lut: Option[LookupTable] = None;
@@ -73,10 +77,10 @@ class VSOverlayManager extends ComponentDefinition {
   boot uponEvent {
     // TODO boot related
     case GetInitialAssignments(nodes) => handle {
-      log.info("Generating LookupTable...");
+      println("Generating LookupTable...");
       val delta = cfg.getValue[Int]("id2203.project.delta")
       val lut = LookupTable.generate(nodes, delta);
-      logger.debug("Generated assignments:\n$lut");
+      println("Generated assignments:\n$lut");
       trigger (new InitialAssignments(lut) -> boot);
     }
     case Booted(assignment: LookupTable) => handle {
@@ -89,6 +93,7 @@ class VSOverlayManager extends ComponentDefinition {
         case Some((index, myPartition)) => {
           trigger(StartDetector(lut, myPartition.toSet) -> epfd);
           trigger(SetTopology(lut, myPartition.toSet) -> beb);
+          trigger(StartSequenceCons(myPartition.toSet) -> seqCons);
         }
         case None => {
           println("CANNOT FIND MY PARTITION")
@@ -105,7 +110,7 @@ class VSOverlayManager extends ComponentDefinition {
     }
     case NetMessage(header, RouteMsg( "ExtractPartitionInfo", dm: Debug)) => handle {
       for(tuple <- lut.get.partitions; address<- tuple._2){
-        val routeMsg = RouteMsg("PartitionInfo", Debug("PartitionInfo"))
+        val routeMsg = RouteMsg("PartitionInfo", Debug("PartitionInfo", self))
         trigger(NetMessage(header.src, address, routeMsg) -> net)
       }
     }
@@ -114,31 +119,21 @@ class VSOverlayManager extends ComponentDefinition {
     }
 
     // TODO routing from clients is happening here
-    case NetMessage(header, RouteMsg(key, msg)) => handle {
-
-      println(" ---------------------")
-      println()
-      println(" Routing message ")
-      println()
-      println(" ---------------------")
-
-      val nodes = lut.get.lookup(key);
+    case NetMessage(header, RouteMsg(key, msg: Op)) => handle {
+      //chooses randomly from all servers; TODO get correct partition + chose only from alive ones
+      val nodes = lut.get.getNodes();  //lut.get.lookup(key);
       assert(!nodes.isEmpty);
       val i = Random.nextInt(nodes.size);
       val target = nodes.drop(i).head;
-      log.info(s"Forwarding message for key $key to $target");
+      println(s"Forwarding message for key $key to $target");
       trigger(NetMessage(header.src, target, msg) -> net);
     }
-    case NetMessage(header, msg: Connect) => handle {
 
-      println(" ---------------------")
-      println()
-      println(" received message")
-      println()
-      println(" ---------------------")
+    case NetMessage(header, msg: Connect) => handle {
+      println("Received connection request from client")
       lut match {
         case Some(l) => {
-          log.debug(s"Accepting connection request from ${header.src}");
+          println(s"Accepting connection request from ${header.src}");
           val size = l.getNodes().size;
           trigger (NetMessage(self, header.src, msg.ack(size)) -> net);
         }
@@ -150,11 +145,11 @@ class VSOverlayManager extends ComponentDefinition {
   route uponEvent {
     // TODO routing from kv store is happening here
     case RouteMsg(key, msg) => handle {
-      val nodes = lut.get.lookup(key);
+      val nodes = lut.get.getNodes();
       assert(!nodes.isEmpty);
       val i = Random.nextInt(nodes.size);
       val target = nodes.drop(i).head;
-      log.info(s"Routing message for key $key to $target");
+      println(s"Routing message for key $key to $target");
       trigger (NetMessage(self, target, msg) -> net);
     }
   }

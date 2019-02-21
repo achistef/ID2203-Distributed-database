@@ -1,5 +1,6 @@
 package se.kth.id2203.beb
 
+import se.kth.id2203.kompicsevents.{BEB_Broadcast, BEB_Deliver, SetTopology}
 import se.kth.id2203.networking.{NetAddress, NetMessage}
 import se.kth.id2203.overlay.LookupTable
 import se.sics.kompics.KompicsEvent
@@ -7,12 +8,6 @@ import se.sics.kompics.network.{Address, Network}
 import se.sics.kompics.sl.{ComponentDefinition, Init, Port, handle}
 
 import scala.collection.immutable.Set
-
-case class BEB_Deliver(src: Address, payload: KompicsEvent) extends KompicsEvent;
-
-case class BEB_Broadcast(payload: KompicsEvent) extends KompicsEvent;
-
-case class SetTopology(lut: Option[LookupTable], nodes: Set[NetAddress]) extends KompicsEvent;
 
 class BestEffortBroadcast extends Port {
   indication[BEB_Deliver];

@@ -65,11 +65,18 @@ class KVService extends ComponentDefinition {
       }
       case SC_Decide(put: Put) => handle {
         println("Performed PUT operation {}!", put);
-        trigger(NetMessage(self, put.source, put.response(OpCode.Ok, None)) -> net);
+        store += ((put.key, put.value))
+        trigger(NetMessage(self, put.source, put.response(OpCode.Ok, Some(put.value))) -> net);
       }
       case SC_Decide(cas: Cas) => handle {
         println("Performed CAS operation {}!", cas);
-        trigger(NetMessage(self, cas.source, cas.response(OpCode.Ok, None)) -> net);
+        if( store.get(cas.key).isDefined && store(cas.key) == cas.oldValue){
+          store += ((cas.key, cas.newValue))
+          trigger(NetMessage(self, cas.source, cas.response(OpCode.Ok, Some(cas.newValue))) -> net);
+        }else{
+          trigger(NetMessage(self, cas.source, cas.response(OpCode.Ok, Some(cas.oldValue))) -> net);
+        }
+
       }
   }
 }

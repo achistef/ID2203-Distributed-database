@@ -54,6 +54,7 @@ case class Debug(key: String, source: NetAddress, id: UUID = UUID.randomUUID()) 
 object OpCode {
   sealed trait OpCode;
   case object Ok extends OpCode;
+  case object NonMatchingValues extends OpCode;
   case object NotFound extends OpCode;
   case object NotImplemented extends OpCode;
 }

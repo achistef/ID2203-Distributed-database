@@ -41,14 +41,10 @@ class KVService extends ComponentDefinition {
   //******* Fields ******
   val self = cfg.getValue[NetAddress]("id2203.project.address");
 
-
   // members
   val store = mutable.Map.empty[String,String]
-  val leader :Option[NetAddress] = None
-
-  // fill store
   for(i <- 0 to 10){
-    store += i.toString -> (10-i).toString
+    store += ((i.toString,(10-i).toString))
   }
 
 
@@ -63,40 +59,24 @@ class KVService extends ComponentDefinition {
 
     sc uponEvent {
       case SC_Decide(get: Get) => handle {
-        //val result = if (store contains get.key) Some(store(get.key)) else None
-        //trigger(NetMessage(self, get.source, get.response(OpCode.Ok, result)) -> net);
-        val result = store.get(get.key);
-        if (result.isDefined) {
-          println(s"(+) Performed GET operation $get");
-          trigger(NetMessage(self, get.source, get.response(OpCode.Ok, result)) -> net);
-        } else {
-          println(s"(-) Performed GET operation $get");
-          trigger(NetMessage(self, get.source, get.response(OpCode.NotFound, Option("Not found"))) -> net);
-        }
+        println(s"Performed GET operation $get");
+        val result = if (store contains get.key) Some(store(get.key)) else None
+        trigger(NetMessage(self, get.source, get.response(OpCode.Ok, result)) -> net);
       }
-
       case SC_Decide(put: Put) => handle {
-        println(s"> Performed PUT operation {$put.key, $put.value!");
-        store += put.key -> put.value
-        trigger(NetMessage(self, put.source, put.response(OpCode.Ok, Option(s"Added value  $put.value to key $put.key"))) -> net);
+        println("Performed PUT operation {}!", put);
+        store += ((put.key, put.value))
+        trigger(NetMessage(self, put.source, put.response(OpCode.Ok, Some(put.value))) -> net);
       }
-
       case SC_Decide(cas: Cas) => handle {
-        println("> Performed CAS operation {}!", cas);
-        if (store.contains(cas.key)) {
-          // compares the old value to the one in store
-          val result = store.get(cas.key);
-          println(s">> OV {} , NV: {} VV: {}", cas.oldValue, cas.newValue, result)
-          if (result == Option(cas.oldValue)) {
-            store += (cas.key -> cas.newValue)
-            trigger(NetMessage(self, cas.source, cas.response(OpCode.Ok, result)) -> net)
-          } else {
-            trigger(NetMessage(self, cas.source, cas.response(OpCode.NonMatchingValues, Option("Values did not match"))) -> net)
-          }
-        } else {
-          trigger(NetMessage(self, cas.source, cas.response(OpCode.NotFound, Option("Not found"))) -> net);
+        println("Performed CAS operation {}!", cas);
+        if( store.get(cas.key).isDefined && store(cas.key) == cas.oldValue){
+          store += ((cas.key, cas.newValue))
+          trigger(NetMessage(self, cas.source, cas.response(OpCode.Ok, Some(cas.newValue))) -> net);
+        }else{
+          trigger(NetMessage(self, cas.source, cas.response(OpCode.Ok, Some(cas.oldValue))) -> net);
         }
-        //trigger(NetMessage(self, cas.source, cas.response(OpCode.Ok, None)) -> net);
+
       }
   }
 }

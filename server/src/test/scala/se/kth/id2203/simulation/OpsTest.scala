@@ -60,6 +60,7 @@ class OpsTest extends FlatSpec with Matchers {
     val seed = 123l;
     JSimulationScenario.setSeed(seed);
     val serversCount = 6
+    val partitionsCount = 2
     val simpleBootScenario = SimpleScenario.scenario(serversCount, SimpleScenario.startClientOp2);
     val res = SimulationResultSingleton.getInstance();
     SimulationResult += ("debugCode1" -> "ExtractPartitionInfo");
@@ -76,17 +77,25 @@ class OpsTest extends FlatSpec with Matchers {
     // check if all servers replied
     lutList.size shouldBe serversCount
 
-    //check if all lut are equal
-    for(i <- 0 to 4){
+    // check if all lut are equal
+    for(i <- 0 until serversCount - 1){
       lutList(i) shouldBe lutList(i+1)
     }
 
     // there should be exactly two partitions
     val lut = lutList(0)
     val partitions = lut.split('|')
-    partitions.size shouldBe 2
+    partitions.size shouldBe partitionsCount
 
-    //many more checks can be added
+    // partitions should not be the same
+    for(i<-  partitions.indices ; j<- i+1 until partitions.length){
+      partitions(i) != partitions(j) shouldBe true
+    }
+    // partitions should have exactly serversCount/partitionsCount addresses
+    for(partition <- partitions)
+      {
+        partition.split(',').count(_.contains("NetAddress")) shouldBe (serversCount/partitionsCount)
+      }
 
   }
 
@@ -118,7 +127,7 @@ class OpsTest extends FlatSpec with Matchers {
     val bcastValues = bcastReplyList.map(_.replace("BroadcastReply",""))
 
     //make sure all addresses are unique
-    for(i<- 0 to bcastValues.size-1 ; j<- i+1 to bcastValues.size-1){
+    for(i<- bcastValues.indices ; j<- i+1 until bcastValues.size){
       bcastValues(i) != bcastValues(j) shouldBe true
     }
 

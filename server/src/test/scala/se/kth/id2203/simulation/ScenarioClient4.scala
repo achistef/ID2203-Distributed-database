@@ -23,9 +23,10 @@
  */
 package se.kth.id2203.simulation
 
+import java.net.InetAddress
 import java.util.concurrent.atomic.AtomicInteger
 
-import se.kth.id2203.kompicsevents.BEB_Deliver
+import se.kth.id2203.kompicsevents.Suspect
 import se.kth.id2203.kvstore._
 import se.kth.id2203.networking._
 import se.kth.id2203.overlay.RouteMsg
@@ -35,7 +36,9 @@ import se.sics.kompics.sl._
 import se.sics.kompics.sl.simulator.SimulationResult
 import se.sics.kompics.timer.Timer
 
-class ScenarioClient3 extends ComponentDefinition {
+import scala.collection.mutable
+
+class ScenarioClient4 extends ComponentDefinition {
 
   //******* Ports ******
   val net: PositivePort[Network] = requires[Network]
@@ -44,13 +47,13 @@ class ScenarioClient3 extends ComponentDefinition {
   val self: NetAddress = cfg.getValue[NetAddress]("id2203.project.address")
   val server: NetAddress = cfg.getValue[NetAddress]("id2203.project.bootstrap-address")
 
-  private val debugCode = "debugCode3"
-  val debugCodeValue = SimulationResult[String](this.debugCode)
-  private val counter = new AtomicInteger(1)
+  private val debugCode = "debugCode4"
+  private val counter = new AtomicInteger(0)
 
   //******* Handlers ******
   ctrl uponEvent {
     case _: Start => handle {
+      val debugCodeValue = SimulationResult[String](this.debugCode)
       val op = Debug(debugCodeValue, self)
       val routeMsg = RouteMsg(op.key, op)
       trigger(NetMessage(self, server, routeMsg) -> net)
@@ -58,9 +61,14 @@ class ScenarioClient3 extends ComponentDefinition {
   }
 
   net uponEvent {
-    case NetMessage(header, BEB_Deliver(receiver, Debug(msg,_,_)))
-      if receiver == self && debugCodeValue == msg => handle {
-      SimulationResult += (debugCode + counter.getAndIncrement() -> ("BroadcastReply"+header.src))
+    case NetMessage(_, OpResponse(_, _, _)) if counter.get == 0 => handle {
+      val db = Debug("Suicide", self)
+      trigger(NetMessage(self, server, RouteMsg(db.key, db)) -> net)
+      counter.incrementAndGet()
+    }
+
+    case NetMessage(src, Suspect(p)) => handle {
+      SimulationResult += (debugCode + counter.getAndIncrement() -> (src.src + ":suspects:" + p))
     }
   }
 }

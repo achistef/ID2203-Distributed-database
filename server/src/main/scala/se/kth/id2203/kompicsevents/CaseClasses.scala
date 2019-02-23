@@ -51,4 +51,6 @@ case class BEB_Deliver(src: Address, payload: KompicsEvent) extends KompicsEvent
 
 case class BEB_Broadcast(payload: KompicsEvent) extends KompicsEvent;
 
+case class BEB_Broadcast_Global(payload: KompicsEvent) extends KompicsEvent
+
 case class SetTopology(lut: Option[LookupTable], nodes: Set[NetAddress]) extends KompicsEvent;

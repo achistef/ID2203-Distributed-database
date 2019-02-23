@@ -23,7 +23,6 @@
  */
 package se.kth.id2203.simulation
 
-import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
 
 import se.kth.id2203.kvstore._
@@ -35,35 +34,31 @@ import se.sics.kompics.sl._
 import se.sics.kompics.sl.simulator.SimulationResult
 import se.sics.kompics.timer.Timer
 
-import scala.collection.mutable
-
 class ScenarioClient2 extends ComponentDefinition {
 
   //******* Ports ******
-  val net = requires[Network]
-  val timer = requires[Timer]
+  val net: PositivePort[Network] = requires[Network]
+  val timer: PositivePort[Timer] = requires[Timer]
   //******* Fields ******
-  val self = cfg.getValue[NetAddress]("id2203.project.address");
-  val server = cfg.getValue[NetAddress]("id2203.project.bootstrap-address");
-  private val pending = mutable.Map.empty[UUID, String];
+  val self: NetAddress = cfg.getValue[NetAddress]("id2203.project.address")
+  val server: NetAddress = cfg.getValue[NetAddress]("id2203.project.bootstrap-address")
 
-  private val debugCode = "debugCode1"
+  private val debugCode = "debugCode2"
   private val counter = new AtomicInteger(1)
 
   //******* Handlers ******
   ctrl uponEvent {
     case _: Start => handle {
       val debugCodeValue = SimulationResult[String](this.debugCode)
-      val op = new Debug(debugCodeValue, self)
+      val op = Debug(debugCodeValue, self)
       val routeMsg = RouteMsg(op.key, op)
       trigger(NetMessage(self, server, routeMsg) -> net)
-      logger.info("Sending {}", op)
     }
   }
 
   net uponEvent {
-    case NetMessage(header, or@OpResponse(id, status, value)) => handle {
-      SimulationResult += (debugCode+counter.getAndIncrement() -> value.get)
+    case NetMessage(_, OpResponse(_, _, value)) => handle {
+      SimulationResult += (debugCode + counter.getAndIncrement() -> value.get)
     }
   }
 }

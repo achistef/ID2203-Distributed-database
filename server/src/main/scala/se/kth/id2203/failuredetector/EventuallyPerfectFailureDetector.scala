@@ -1,5 +1,6 @@
 package se.kth.id2203.failuredetector
 import se.kth.id2203.kompicsevents._
+import se.kth.id2203.kvstore.Debug
 import se.kth.id2203.networking.{NetAddress, NetMessage}
 import se.kth.id2203.overlay.LookupTable
 import se.sics.kompics.network._
@@ -35,6 +36,8 @@ class EPFD(epfdInit: Init[EPFD]) extends ComponentDefinition {
   var alive = Set[NetAddress]();
   var suspected = Set[NetAddress]();
   var seqnum = 0;
+  var debugSource : Option[NetAddress] = None
+  var responding : Boolean = true
 
   def startTimer(delay: Long): Unit = {
     val scheduledTimeout = new ScheduleTimeout(period);
@@ -51,14 +54,25 @@ class EPFD(epfdInit: Init[EPFD]) extends ComponentDefinition {
       for (p <- myPartitionTopology) {
         if (!alive.contains(p) && !suspected.contains(p)) {
           suspected += p;
-          println(s"----------------------- EFPD suspected $p");
-          trigger(Suspect(p) -> epfd);
+
+          if(responding){
+            println(s"$self EFPD suspected $p")
+            trigger(Suspect(p) -> epfd)
+            // send suspect to debug source
+            if(debugSource.isDefined)
+              trigger(NetMessage(self, debugSource.get, Suspect(p)) -> pLink)
+          }
         } else if (alive.contains(p) && suspected.contains(p)) {
           suspected = suspected - p;
-          println(s"----------------------- EFPD restored $p");
-          trigger(Restore(p) -> epfd);
+          if(responding){
+            println(s"$self EFPD restored $p")
+            trigger(Restore(p) -> epfd);
+          }
         }
-        trigger(NetMessage(self, p, HeartbeatRequest(seqnum)) -> pLink);
+        if(responding){
+          trigger(NetMessage(self, p, HeartbeatRequest(seqnum)) -> pLink);
+        }
+
       }
       alive = Set[NetAddress]();
       startTimer(period);
@@ -66,7 +80,20 @@ class EPFD(epfdInit: Init[EPFD]) extends ComponentDefinition {
   }
 
   pLink uponEvent {
-    case NetMessage(src, HeartbeatRequest(seq)) => handle {
+
+    case NetMessage(src, deb @Debug("Suicide",_,_)) => handle {
+      responding = false
+      println(src)
+      println(deb)
+      println(self + " WILL STOP RESPONDING...")
+      println()
+      println()
+    }
+    case NetMessage(_, Debug("FailureDetect", source, _)) => handle {
+      debugSource = Some(source)
+    }
+
+    case NetMessage(src, HeartbeatRequest(seq)) if responding => handle {
       trigger(NetMessage(self, src.src, HeartbeatReply(seq)) -> pLink);
     }
     case NetMessage(src, HeartbeatReply(seq)) => handle {

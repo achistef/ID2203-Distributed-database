@@ -21,49 +21,46 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package se.kth.id2203.simulation;
+package se.kth.id2203.simulation
 
-import java.util.UUID;
-import se.kth.id2203.kvstore._;
-import se.kth.id2203.networking._;
-import se.kth.id2203.overlay.RouteMsg;
+import java.util.UUID
+import se.kth.id2203.kvstore._
+import se.kth.id2203.networking._
+import se.kth.id2203.overlay.RouteMsg
 import se.sics.kompics.sl._
-import se.sics.kompics.Start;
-import se.sics.kompics.network.Network;
-import se.sics.kompics.timer.Timer;
-import se.sics.kompics.sl.simulator.SimulationResult;
-import collection.mutable;
+import se.sics.kompics.Start
+import se.sics.kompics.network.Network
+import se.sics.kompics.timer.Timer
+import se.sics.kompics.sl.simulator.SimulationResult
+import collection.mutable
 
 class ScenarioClient1 extends ComponentDefinition {
 
   //******* Ports ******
-  val net = requires[Network];
-  val timer = requires[Timer];
+  val net: PositivePort[Network] = requires[Network]
+  val timer: PositivePort[Timer] = requires[Timer]
   //******* Fields ******
-  val self = cfg.getValue[NetAddress]("id2203.project.address");
-  val server = cfg.getValue[NetAddress]("id2203.project.bootstrap-address");
-  private val pending = mutable.Map.empty[UUID, String];
+  val self: NetAddress = cfg.getValue[NetAddress]("id2203.project.address")
+  val server: NetAddress = cfg.getValue[NetAddress]("id2203.project.bootstrap-address")
+  private val pending: mutable.Map[UUID, String] = mutable.Map.empty
   //******* Handlers ******
   ctrl uponEvent {
     case _: Start => handle {
-      println("STARTING CLIENT 1")
-      val messages = SimulationResult[Int]("messages");
+      val messages = SimulationResult[Int]("debugCode1")
       for (i <- 0 to messages) {
-        val op = new Get(i.toString, self);
-        val routeMsg = RouteMsg(op.key, op); // don't know which partition is responsible, so ask the bootstrap server to forward it
-        trigger(NetMessage(self, server, routeMsg) -> net);
-        pending += (op.id -> op.key);
-        logger.info("Sending {}", op);
+        val op = Get(i.toString, self)
+        val routeMsg = RouteMsg(op.key, op) // don't know which partition is responsible, so ask the bootstrap server to forward it
+        trigger(NetMessage(self, server, routeMsg) -> net)
+        pending += (op.id -> op.key)
       }
     }
   }
 
   net uponEvent {
-    case NetMessage(header, or @ OpResponse(id, status, value)) => handle {
-      logger.debug(s"Got OpResponse: $or");
+    case NetMessage(_, OpResponse(id, _, value)) => handle {
       pending.remove(id) match {
-        case Some(key) => SimulationResult += ("message"+key -> value.get);
-        case None      => logger.warn("ID $id was not pending! Ignoring response.");
+        case Some(key) => SimulationResult += ("message" + key -> value.get);
+        case None => logger.warn("ID $id was not pending! Ignoring response.");
       }
     }
   }

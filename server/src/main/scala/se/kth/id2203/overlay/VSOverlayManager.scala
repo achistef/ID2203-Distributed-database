@@ -31,7 +31,7 @@ import se.kth.id2203.kvstore.{Debug, Op, OpCode}
 import se.kth.id2203.networking._
 import se.kth.id2203.sequencepaxos.SequenceConsensus
 import se.sics.kompics.sl._
-import se.sics.kompics.network.Network
+import se.sics.kompics.network.{Address, Network}
 import se.sics.kompics.timer.Timer
 
 import util.Random
@@ -57,6 +57,7 @@ class VSOverlayManager extends ComponentDefinition {
   val epfd: PositivePort[EventuallyPerfectFailureDetector] = requires[EventuallyPerfectFailureDetector]
   val beb: PositivePort[BestEffortBroadcast] = requires[BestEffortBroadcast]
   var seqCons: PositivePort[SequenceConsensus] = requires[SequenceConsensus]
+  var suspected = Set[NetAddress]()
 
   //******* Fields ******
   val self: NetAddress = cfg.getValue[NetAddress]("id2203.project.address")
@@ -72,13 +73,28 @@ class VSOverlayManager extends ComponentDefinition {
     }
   }
 
+  epfd uponEvent {
+    case Suspect(p) => handle {
+      println(s">>> $p suspected")
+      suspected += p
+    }
+    case Restore(p) => handle {
+      println(s">>> $p resored")
+      suspected -= p
+    }
+  }
+
   boot uponEvent {
     // TODO boot related
     case GetInitialAssignments(nodes) => handle {
       println("Generating LookupTable...")
       val delta = cfg.getValue[Int]("id2203.project.delta")
       val lut = LookupTable.generate(nodes, delta)
-      println("Generated assignments:\n$lut")
+      println("*************************************************")
+      println("*************************************************")
+      println(s"Generated assignments:\n" + lut)
+      println("*************************************************")
+      println("*************************************************")
       trigger(InitialAssignments(lut) -> boot)
     }
     case Booted(assignment: LookupTable) => handle {
@@ -124,10 +140,7 @@ class VSOverlayManager extends ComponentDefinition {
     // TODO routing from clients is happening here
     case NetMessage(header, RouteMsg(key, msg: Op)) => handle {
       //chooses randomly from all servers; TODO get correct partition + chose only from alive ones
-      val nodes = lut.get.getNodes()
-      assert(nodes.nonEmpty)
-      val i = Random.nextInt(nodes.size)
-      val target = nodes.drop(i).head
+      val target = getTragetFromLut(key)
       //println(s"Forwarding message for key $key to $target")
       trigger(NetMessage(header.src, target, msg) -> net)
     }
@@ -147,12 +160,20 @@ class VSOverlayManager extends ComponentDefinition {
   route uponEvent {
     // TODO routing from kv store is happening here
     case RouteMsg(key, msg) => handle {
-      val nodes = lut.get.getNodes()
-      assert(nodes.nonEmpty)
-      val i = Random.nextInt(nodes.size)
-      val target = nodes.drop(i).head
+      val target = getTragetFromLut(key)
       println(s"Routing message for key $key to $target")
       trigger(NetMessage(self, target, msg) -> net)
     }
+  }
+
+  def getTragetFromLut(key: String): NetAddress = {
+    var nodes = lut.get.lookup(key).toSet
+    nodes = nodes -- suspected
+    assert(nodes.nonEmpty)
+    if (nodes.contains(self)) {
+      return self
+    }
+    val i = Random.nextInt(nodes.size)
+    nodes.drop(i).head
   }
 }

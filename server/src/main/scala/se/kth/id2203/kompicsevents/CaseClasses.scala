@@ -23,9 +23,9 @@ case class StartElection(nodes: Set[NetAddress]) extends KompicsEvent;
 
 case class BLE_Leader(leader: NetAddress, ballot: Long) extends KompicsEvent;
 
-case class Suspect(process: Address) extends KompicsEvent;
+case class Suspect(process: NetAddress) extends KompicsEvent;
 
-case class Restore(process: Address) extends KompicsEvent;
+case class Restore(process: NetAddress) extends KompicsEvent;
 
 case class StartDetector(lookupTable: Option[LookupTable], nodes: Set[NetAddress]) extends KompicsEvent;
 

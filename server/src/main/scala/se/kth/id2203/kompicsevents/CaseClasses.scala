@@ -47,7 +47,7 @@ case class SC_Propose(value: Op) extends KompicsEvent;
 
 case class SC_Decide(value: Op) extends KompicsEvent;
 
-case class BEB_Deliver(src: Address, payload: KompicsEvent) extends KompicsEvent;
+case class BEB_Deliver(src: NetAddress, payload: KompicsEvent) extends KompicsEvent;
 
 case class BEB_Broadcast(payload: KompicsEvent) extends KompicsEvent;
 

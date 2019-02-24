@@ -79,7 +79,7 @@ class ClientService extends ComponentDefinition {
       log.debug(s"Got OpResponse: $or");
       pending.remove(id) match {
         case Some(promise) => promise.success(or);
-        case None          => log.warn(s"ID $id was not pending! Ignoring response.");
+        case None          => None;        // ignore unknown replies
       }
     }
   }

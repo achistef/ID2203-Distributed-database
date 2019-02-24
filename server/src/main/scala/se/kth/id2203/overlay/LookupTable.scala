@@ -35,12 +35,11 @@ class LookupTable extends NodeAssignment with Serializable {
   val partitions = TreeSetMultiMap.empty[Int, NetAddress];
 
   def lookup(key: String): Iterable[NetAddress] = {
-    val keyHash = key.hashCode();
+    var keyHash = key.hashCode();
     println(s">>> KEYHASH: $keyHash")
-    val partition = partitions.floor(keyHash) match {
-      case Some(k) => k
-      case None => partitions.lastKey
-    }
+    if(keyHash < 0) keyHash *= (-1);
+    val partition = keyHash % (partitions.lastKey + 1);
+    println(s">>> PARTITION CHOSEN: $partition");
     return partitions(partition);
   }
 

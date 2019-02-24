@@ -27,6 +27,7 @@ import se.kth.id2203.beb.BestEffortBroadcast
 import se.kth.id2203.bootstrapping._
 import se.kth.id2203.kompicsevents._
 import se.kth.id2203.failuredetector.EventuallyPerfectFailureDetector
+import se.kth.id2203.kompicsevents
 import se.kth.id2203.kvstore.{Debug, Op, OpCode}
 import se.kth.id2203.networking._
 import se.kth.id2203.sequencepaxos.SequenceConsensus
@@ -69,7 +70,8 @@ class VSOverlayManager extends ComponentDefinition {
     case BEB_Deliver(src, payload) => handle {
       println("************************")
       println(s"(BEB) Received broadcast from $src with $payload");
-      println("************************")
+      println("************************");
+      trigger(NetMessage(src, self, payload) -> net);
     }
   }
 
@@ -139,10 +141,9 @@ class VSOverlayManager extends ComponentDefinition {
 
     // TODO routing from clients is happening here
     case NetMessage(header, RouteMsg(key, msg: Op)) => handle {
-      //chooses randomly from all servers; TODO get correct partition + chose only from alive ones
-      val target = getTragetFromLut(key)
-      //println(s"Forwarding message for key $key to $target")
-      trigger(NetMessage(header.src, target, msg) -> net)
+      val nodes = lut.get.lookup(key).toSet
+      trigger(SetTopology(lut, nodes) -> beb);
+      trigger(BEB_Broadcast(msg) -> beb);
     }
 
     case NetMessage(header, msg: Connect) => handle {
@@ -160,20 +161,10 @@ class VSOverlayManager extends ComponentDefinition {
   route uponEvent {
     // TODO routing from kv store is happening here
     case RouteMsg(key, msg) => handle {
-      val target = getTragetFromLut(key)
-      println(s"Routing message for key $key to $target")
-      trigger(NetMessage(self, target, msg) -> net)
+      val nodes =lut.get.lookup(key).toSet
+      trigger(SetTopology(lut, nodes) -> beb);
+      trigger(BEB_Broadcast(msg) -> beb);
     }
   }
 
-  def getTragetFromLut(key: String): NetAddress = {
-    var nodes = lut.get.lookup(key).toSet
-    nodes = nodes -- suspected
-    assert(nodes.nonEmpty)
-    if (nodes.contains(self)) {
-      return self
-    }
-    val i = Random.nextInt(nodes.size)
-    nodes.drop(i).head
-  }
 }

@@ -135,8 +135,7 @@ class SequencePaxos extends ComponentDefinition {
     case NetMessage(h, Decide(l, nL)) => handle {
       if (nProm == nL) {
         while (ld < l) {
-          if(self == leader.get)       //only the leader replies
-            trigger(SC_Decide(va(ld)) -> sc);
+          trigger(SC_Decide(va(ld)) -> sc);
           ld += 1;
         }
       }
@@ -172,8 +171,7 @@ class SequencePaxos extends ComponentDefinition {
           }
         }
       } else {
-          println(s"--------------Not the leader - sending $c to $leader");
-          trigger(NetMessage(c.source, leader.get, c) -> pl);
+          println(s"--------------Not the leader - ignore message");
       }
     }
     case StartSequenceCons(nodes: Set[NetAddress]) => handle {

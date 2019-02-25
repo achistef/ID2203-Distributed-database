@@ -46,7 +46,7 @@ class OpsTest extends FlatSpec with Matchers {
 
   private val nMessages = 10
 
-  "Get operation with <key>=[0,10]" should "return 10-<key>" in {
+  "Get operation with <key>=[0,10]" should "return pre-loaded values 10-<key>" in {
     val seed = 123l
     JSimulationScenario.setSeed(seed)
     val simpleBootScenario = SimpleScenario.scenario(6, SimpleScenario.startClientOp1)
@@ -172,6 +172,35 @@ class OpsTest extends FlatSpec with Matchers {
 
   }
 
+  "Put/Get operation in the KV store" should "be functioning" in {
+    val seed = 123l
+    JSimulationScenario.setSeed(seed)
+    val simpleBootScenario = SimpleScenario.scenario(6, SimpleScenario.startClientOp5)
+    SimulationResultSingleton.getInstance()
+
+    val range = 100 to 110
+    SimulationResult += ("debugCode5" -> "100-110")
+    simpleBootScenario.simulate(classOf[LauncherComp])
+    for (i <- range) {
+      SimulationResult.get[String]("put/get:"+i.toString).get shouldBe i.toString
+    }
+  }
+
+  "Put/Cas/Get operation in the KV store" should "be functioning" in {
+    val seed = 123l
+    JSimulationScenario.setSeed(seed)
+    val simpleBootScenario = SimpleScenario.scenario(6, SimpleScenario.startClientOp6)
+    SimulationResultSingleton.getInstance()
+
+    val range = 200 to 210
+    SimulationResult += ("debugCode6" -> "200-210")
+    simpleBootScenario.simulate(classOf[LauncherComp])
+    for (i <- range) {
+      SimulationResult.get[String]("put/cas/get:"+i.toString).get shouldBe
+        (if(i%2 == 0) i.toString else (-i).toString)
+    }
+  }
+
 
 }
 
@@ -254,6 +283,22 @@ object SimpleScenario {
       "id2203.project.address" -> selfAddr,
       "id2203.project.bootstrap-address" -> intToServerAddress(1))
     StartNode(selfAddr, Init.none[ScenarioClient4], conf);
+  }
+
+  val startClientOp5 = Op { self: Integer =>
+    val selfAddr = intToClientAddress(self)
+    val conf = Map(
+      "id2203.project.address" -> selfAddr,
+      "id2203.project.bootstrap-address" -> intToServerAddress(1))
+    StartNode(selfAddr, Init.none[ScenarioClient5], conf);
+  }
+
+  val startClientOp6 = Op { self: Integer =>
+    val selfAddr = intToClientAddress(self)
+    val conf = Map(
+      "id2203.project.address" -> selfAddr,
+      "id2203.project.bootstrap-address" -> intToServerAddress(1))
+    StartNode(selfAddr, Init.none[ScenarioClient6], conf);
   }
 
   def scenario(servers: Int, cl: Operation1[StartNodeEvent, Integer]): JSimulationScenario = {

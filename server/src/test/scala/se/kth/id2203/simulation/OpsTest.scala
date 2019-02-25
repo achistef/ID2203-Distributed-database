@@ -201,6 +201,18 @@ class OpsTest extends FlatSpec with Matchers {
     }
   }
 
+  "KV store" should "be able to function with up to one failure per partition" in {
+    val seed = 123l
+    JSimulationScenario.setSeed(seed)
+    val simpleBootScenario = SimpleScenario.scenario(6, SimpleScenario.startClientOp7)
+    SimulationResultSingleton.getInstance()
+
+    SimulationResult += ("debugCode7" -> "0,1")
+    simpleBootScenario.simulate(classOf[LauncherComp])
+    SimulationResult.get[String]("put/get:0").get shouldBe "0"
+    SimulationResult.get[String]("put/get:1").get shouldBe "1"
+  }
+
 
 }
 
@@ -299,6 +311,14 @@ object SimpleScenario {
       "id2203.project.address" -> selfAddr,
       "id2203.project.bootstrap-address" -> intToServerAddress(1))
     StartNode(selfAddr, Init.none[ScenarioClient6], conf);
+  }
+
+  val startClientOp7 = Op { self: Integer =>
+    val selfAddr = intToClientAddress(self)
+    val conf = Map(
+      "id2203.project.address" -> selfAddr,
+      "id2203.project.bootstrap-address" -> intToServerAddress(1))
+    StartNode(selfAddr, Init.none[ScenarioClient7], conf);
   }
 
   def scenario(servers: Int, cl: Operation1[StartNodeEvent, Integer]): JSimulationScenario = {

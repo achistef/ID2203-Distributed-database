@@ -117,10 +117,15 @@ class VSOverlayManager extends ComponentDefinition {
   }
 
   net uponEvent {
-    case NetMessage(header, RouteMsg("Suicide", dm: Debug)) => handle {
-      trigger(NetMessage(header.src, self, dm) -> net)
+    case NetMessage(header, RouteMsg(killCmd, dm: Debug)) if killCmd startsWith "Kill/key:" => handle {
+      val key = killCmd.replace("Kill/key:","")
+      val partIterator = lut.get.lookup(key).iterator
+      var addr : Option[NetAddress] = None
+      do{
+        addr = Some(partIterator.next())
+      }while(addr.contains(self))
+      trigger(NetMessage(header.src, addr.get, Debug("Suicide", dm.source)) -> net)
     }
-
     case NetMessage(header, RouteMsg("FailureDetect", dm: Debug)) => handle {
       trigger(NetMessage(self, header.src, dm.response(OpCode.Ok, Some(lut.get.getPartitionsAsString()))) -> net)
       trigger(BEB_Broadcast_Global(dm) -> beb)

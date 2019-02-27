@@ -172,7 +172,7 @@ class OpsTest extends FlatSpec with Matchers {
 
   }
 
-  "Put/Get operation in the KV store" should "be functioning" in {
+  "Put/Get operations in the KV store" should "be linearizable" in {
     val seed = 123l
     JSimulationScenario.setSeed(seed)
     val simpleBootScenario = SimpleScenario.scenario(6, SimpleScenario.startClientOp5)
@@ -186,7 +186,7 @@ class OpsTest extends FlatSpec with Matchers {
     }
   }
 
-  "Put/Cas/Get operation in the KV store" should "be functioning" in {
+  "Put/Cas/Get operation in the KV store" should "be linearizable" in {
     val seed = 123l
     JSimulationScenario.setSeed(seed)
     val simpleBootScenario = SimpleScenario.scenario(6, SimpleScenario.startClientOp6)
@@ -207,11 +207,15 @@ class OpsTest extends FlatSpec with Matchers {
     val simpleBootScenario = SimpleScenario.scenario(6, SimpleScenario.startClientOp7)
     SimulationResultSingleton.getInstance()
 
-    SimulationResult += ("debugCode7" -> "0,1")
+    val range = 300 to 310
+    SimulationResult += ("debugCode7" -> "300-310")
     simpleBootScenario.simulate(classOf[LauncherComp])
-    SimulationResult.get[String]("put/get:0").get shouldBe "0"
-    SimulationResult.get[String]("put/get:1").get shouldBe "1"
+    for (i <- range) {
+      SimulationResult.get[String]("put/get:"+i.toString).get shouldBe i.toString
+    }
   }
+
+
 
 
 }
@@ -234,14 +238,14 @@ object SimpleScenario {
       .map(arr => NetAddress(InetAddress.getByName(arr(0)), arr(1).toInt)).toList
   }
 
-  private def intToServerAddress(i: Int): Address = {
+  def intToServerAddress(i: Int): Address = {
     try {
       NetAddress(InetAddress.getByName("192.193.0." + i), 45678)
     } catch {
       case ex: UnknownHostException => throw new RuntimeException(ex);
     }
   }
-  private def intToClientAddress(i: Int): Address = {
+  def intToClientAddress(i: Int): Address = {
     try {
       NetAddress(InetAddress.getByName("192.193.1." + i), 45678)
     } catch {
@@ -249,7 +253,7 @@ object SimpleScenario {
     }
   }
 
-  private def isBootstrap(self: Int): Boolean = self == 1
+  def isBootstrap(self: Int): Boolean = self == 1
 
   val startServerOp = Op { self: Integer =>
 

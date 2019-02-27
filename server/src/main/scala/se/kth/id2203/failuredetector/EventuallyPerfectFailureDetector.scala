@@ -5,8 +5,8 @@ import se.kth.id2203.networking.{NetAddress, NetMessage}
 import se.kth.id2203.overlay.LookupTable
 import se.sics.kompics.network._
 import se.sics.kompics.sl.{Init, _}
-import se.sics.kompics.timer.{ScheduleTimeout, Timeout, Timer}
-import se.sics.kompics.{KompicsEvent, Start, ComponentDefinition => _, Port => _}
+import se.sics.kompics.timer.{ScheduleTimeout, Timer}
+import se.sics.kompics.{ComponentDefinition => _, Port => _}
 
 
 class EventuallyPerfectFailureDetector extends Port {

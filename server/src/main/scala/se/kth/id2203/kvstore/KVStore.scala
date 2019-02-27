@@ -70,12 +70,11 @@ class KVService extends ComponentDefinition {
       }
       case SC_Decide(cas: Cas) => handle {
         println("Performed CAS operation {}!", cas);
-        if( store.get(cas.key).isDefined && store(cas.key) == cas.oldValue){
-          store += ((cas.key, cas.newValue))
-          trigger(NetMessage(self, cas.source, cas.response(OpCode.Ok, Some(cas.newValue))) -> net);
-        }else{
-          trigger(NetMessage(self, cas.source, cas.response(OpCode.Ok, Some(cas.oldValue))) -> net);
-        }
+        val storedValue : Option[String] =
+          if (store.get(cas.key).isDefined) Some(store(cas.key))
+          else None
+        if(storedValue.isDefined && storedValue.get == cas.oldValue) store += ((cas.key, cas.newValue))
+        trigger(NetMessage(self, cas.source, cas.response(OpCode.Ok, storedValue)) -> net)
 
       }
   }

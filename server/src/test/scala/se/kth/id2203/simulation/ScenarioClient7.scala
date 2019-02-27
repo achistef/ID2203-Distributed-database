@@ -46,18 +46,20 @@ class ScenarioClient7 extends ComponentDefinition {
   //******* Handlers ******
   ctrl uponEvent {
     case _: Start => handle {
-      val values = SimulationResult[String]("debugCode7").split(',')
-      for (value <- values){
-        val put = Put(value, value, self)
+      val range = SimulationResult[String]("debugCode7")
+      val boundaries = range.split('-')
+      for (value <- boundaries(0).toInt to boundaries(1).toInt){
+        val put = Put(value.toString, value.toString, self)
         val putMsg = RouteMsg(put.key, put)
         trigger(NetMessage(self, server, putMsg) -> net)
 
+        //KILLS ONLY ONE PROCESS PER PARTITION.
         val killOp = Debug("Kill/key:"+value, self)
         val routeMsg = RouteMsg(killOp.key, killOp)
         trigger(NetMessage(self, server, routeMsg) -> net)
 
 
-        val get = Get(value, self)
+        val get = Get(value.toString, self)
         val getMsg = RouteMsg(get.key, get)
         trigger(NetMessage(self, server, getMsg) -> net)
         pending += (get.id -> get.key)

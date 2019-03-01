@@ -45,11 +45,11 @@ import scala.concurrent.duration._
 class OpsTest extends FlatSpec with Matchers {
 
   private val nMessages = 10
-
+  /**
   "Get operation with <key>=[0,10]" should "return pre-loaded values 10-<key>" in {
     val seed = 123l
     JSimulationScenario.setSeed(seed)
-    val simpleBootScenario = SimpleScenario.scenario(6, SimpleScenario.startClientOp1)
+    val simpleBootScenario = SimpleScenario.scenario(6, SimpleScenario.defaultValueClient)
     SimulationResultSingleton.getInstance()
     SimulationResult += ("debugCode1" -> nMessages)
     simpleBootScenario.simulate(classOf[LauncherComp])
@@ -64,7 +64,7 @@ class OpsTest extends FlatSpec with Matchers {
     val serversCount = 6
     val delta = 3 // cannot read value with cfg
     val partitionsCount = serversCount / delta
-    val simpleBootScenario = SimpleScenario.scenario(serversCount, SimpleScenario.startClientOp2)
+    val simpleBootScenario = SimpleScenario.scenario(serversCount, SimpleScenario.partitionClient)
     SimulationResult += ("debugCode2" -> "ExtractPartitionInfo")
     simpleBootScenario.simulate(classOf[LauncherComp])
 
@@ -110,7 +110,7 @@ class OpsTest extends FlatSpec with Matchers {
     val seed = 123l
     val serversCount = 6
     JSimulationScenario.setSeed(seed)
-    val simpleBootScenario = SimpleScenario.scenario(serversCount, SimpleScenario.startClientOp3)
+    val simpleBootScenario = SimpleScenario.scenario(serversCount, SimpleScenario.broadcastClient)
     SimulationResult += ("debugCode3" -> "BroadcastFlood")
     simpleBootScenario.simulate(classOf[LauncherComp])
 
@@ -144,7 +144,7 @@ class OpsTest extends FlatSpec with Matchers {
     JSimulationScenario.setSeed(seed)
     val serversCount = 6
     val delta = 3
-    val simpleBootScenario = SimpleScenario.scenario(serversCount, SimpleScenario.startClientOp4)
+    val simpleBootScenario = SimpleScenario.scenario(serversCount, SimpleScenario.epfdClient)
     SimulationResult += ("debugCode4" -> "FailureDetect")
     simpleBootScenario.simulate(classOf[LauncherComp])
 
@@ -175,7 +175,7 @@ class OpsTest extends FlatSpec with Matchers {
   "Put/Get operations in the KV store" should "be linearizable" in {
     val seed = 123l
     JSimulationScenario.setSeed(seed)
-    val simpleBootScenario = SimpleScenario.scenario(6, SimpleScenario.startClientOp5)
+    val simpleBootScenario = SimpleScenario.scenario(6, SimpleScenario.putGetClient)
     SimulationResultSingleton.getInstance()
 
     val range = 100 to 110
@@ -189,7 +189,7 @@ class OpsTest extends FlatSpec with Matchers {
   "Put/Cas/Get operation in the KV store" should "be linearizable" in {
     val seed = 123l
     JSimulationScenario.setSeed(seed)
-    val simpleBootScenario = SimpleScenario.scenario(6, SimpleScenario.startClientOp6)
+    val simpleBootScenario = SimpleScenario.scenario(6, SimpleScenario.putCasGetClient)
     SimulationResultSingleton.getInstance()
 
     val range = 200 to 210
@@ -204,7 +204,7 @@ class OpsTest extends FlatSpec with Matchers {
   "KV store" should "be able to function with up to one failure per partition" in {
     val seed = 123l
     JSimulationScenario.setSeed(seed)
-    val simpleBootScenario = SimpleScenario.scenario(6, SimpleScenario.startClientOp7)
+    val simpleBootScenario = SimpleScenario.scenario(6, SimpleScenario.crashClient)
     SimulationResultSingleton.getInstance()
 
     val range = 300 to 310
@@ -213,6 +213,25 @@ class OpsTest extends FlatSpec with Matchers {
     for (i <- range) {
       SimulationResult.get[String]("put/get:"+i.toString).get shouldBe i.toString
     }
+  }
+  */
+
+  "Put/Cas/Get operation with 2 clients" should "be linearizable" in {
+    // client 1 performs put 400 0
+    // client 2 performs cas 400 0 400
+    // client 1 performs get 400 and saves the result to the simulation map
+    // the result should be 400
+    // there is no sync provided between clients...
+    val seed = 123l
+    JSimulationScenario.setSeed(seed)
+    val simpleBootScenario =
+      SimpleScenario.twoClientScenario(6, SimpleScenario.lin1Client, SimpleScenario.lin2Client)
+    SimulationResultSingleton.getInstance()
+
+    val value = 400
+    SimulationResult += ("debugCode8" -> value.toString)
+    simpleBootScenario.simulate(classOf[LauncherComp])
+    SimulationResult.get[String]("put/cas/get:"+value.toString).get shouldBe "400"
   }
 
 
@@ -269,60 +288,76 @@ object SimpleScenario {
     StartNode(selfAddr, Init.none[ParentComponent], conf);
   }
 
-  val startClientOp1 = Op { self: Integer =>
+  val defaultValueClient = Op { self: Integer =>
     val selfAddr = intToClientAddress(self)
     val conf = Map(
       "id2203.project.address" -> selfAddr,
       "id2203.project.bootstrap-address" -> intToServerAddress(1))
-    StartNode(selfAddr, Init.none[ScenarioClient1], conf);
+    StartNode(selfAddr, Init.none[DefaultValueTestClient], conf);
   }
 
-  val startClientOp2 = Op { self: Integer =>
+  val partitionClient = Op { self: Integer =>
     val selfAddr = intToClientAddress(self)
     val conf = Map(
       "id2203.project.address" -> selfAddr,
       "id2203.project.bootstrap-address" -> intToServerAddress(1))
-    StartNode(selfAddr, Init.none[ScenarioClient2], conf);
+    StartNode(selfAddr, Init.none[PartitionTestClient], conf);
   }
 
-  val startClientOp3 = Op { self: Integer =>
+  val broadcastClient = Op { self: Integer =>
     val selfAddr = intToClientAddress(self)
     val conf = Map(
       "id2203.project.address" -> selfAddr,
       "id2203.project.bootstrap-address" -> intToServerAddress(1))
-    StartNode(selfAddr, Init.none[ScenarioClient3], conf);
+    StartNode(selfAddr, Init.none[BroadcastTestClient], conf);
   }
 
-  val startClientOp4 = Op { self: Integer =>
+  val epfdClient = Op { self: Integer =>
     val selfAddr = intToClientAddress(self)
     val conf = Map(
       "id2203.project.address" -> selfAddr,
       "id2203.project.bootstrap-address" -> intToServerAddress(1))
-    StartNode(selfAddr, Init.none[ScenarioClient4], conf);
+    StartNode(selfAddr, Init.none[EPFD_TestClient], conf);
   }
 
-  val startClientOp5 = Op { self: Integer =>
+  val putGetClient = Op { self: Integer =>
     val selfAddr = intToClientAddress(self)
     val conf = Map(
       "id2203.project.address" -> selfAddr,
       "id2203.project.bootstrap-address" -> intToServerAddress(1))
-    StartNode(selfAddr, Init.none[ScenarioClient5], conf);
+    StartNode(selfAddr, Init.none[PutGetTestClient], conf);
   }
 
-  val startClientOp6 = Op { self: Integer =>
+  val putCasGetClient = Op { self: Integer =>
     val selfAddr = intToClientAddress(self)
     val conf = Map(
       "id2203.project.address" -> selfAddr,
       "id2203.project.bootstrap-address" -> intToServerAddress(1))
-    StartNode(selfAddr, Init.none[ScenarioClient6], conf);
+    StartNode(selfAddr, Init.none[PutCasGetTestClient], conf);
   }
 
-  val startClientOp7 = Op { self: Integer =>
+  val crashClient = Op { self: Integer =>
     val selfAddr = intToClientAddress(self)
     val conf = Map(
       "id2203.project.address" -> selfAddr,
       "id2203.project.bootstrap-address" -> intToServerAddress(1))
-    StartNode(selfAddr, Init.none[ScenarioClient7], conf);
+    StartNode(selfAddr, Init.none[CrashTestClient], conf);
+  }
+
+  val lin1Client = Op { self: Integer =>
+    val selfAddr = intToClientAddress(self)
+    val conf = Map(
+      "id2203.project.address" -> selfAddr,
+      "id2203.project.bootstrap-address" -> intToServerAddress(1))
+    StartNode(selfAddr, Init.none[Lin1TestClient], conf);
+  }
+
+  val lin2Client = Op { self: Integer =>
+    val selfAddr = intToClientAddress(self+1)
+    val conf = Map(
+      "id2203.project.address" -> selfAddr,
+      "id2203.project.bootstrap-address" -> intToServerAddress(1))
+    StartNode(selfAddr, Init.none[Lin2TestClient], conf);
   }
 
   def scenario(servers: Int, cl: Operation1[StartNodeEvent, Integer]): JSimulationScenario = {
@@ -333,6 +368,19 @@ object SimpleScenario {
     startCluster andThen
       10.seconds afterTermination startClients andThen
       100.seconds afterTermination Terminate
+  }
+
+  def twoClientScenario(servers: Int, cl1: Operation1[StartNodeEvent, Integer], cl2: Operation1[StartNodeEvent, Integer]): JSimulationScenario = {
+
+    val startCluster = raise(servers, startServerOp, 1.toN).arrival(constant(1.second))
+    val startClient1 = raise(1, cl1, 1.toN).arrival(constant(1.second))
+    val startClient2 = raise(1, cl2, 1.toN).arrival(constant(1.second))
+
+    startCluster andThen
+      10.seconds afterTermination startClient1 andThen
+      0.seconds afterTermination startClient2 andThen
+      100.seconds afterTermination Terminate
+
   }
 
 }

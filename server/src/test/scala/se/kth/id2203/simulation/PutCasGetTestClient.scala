@@ -34,7 +34,7 @@ import se.sics.kompics.timer.Timer
 import se.sics.kompics.sl.simulator.SimulationResult
 import collection.mutable
 
-class ScenarioClient7 extends ComponentDefinition {
+class PutCasGetTestClient extends ComponentDefinition {
 
   //******* Ports ******
   val net: PositivePort[Network] = requires[Network]
@@ -46,24 +46,24 @@ class ScenarioClient7 extends ComponentDefinition {
   //******* Handlers ******
   ctrl uponEvent {
     case _: Start => handle {
-      val range = SimulationResult[String]("debugCode7")
+      val range = SimulationResult[String]("debugCode6")
       val boundaries = range.split('-')
-      for (value <- boundaries(0).toInt to boundaries(1).toInt){
-        val put = Put(value.toString, value.toString, self)
+      for (i <- boundaries(0).toInt to boundaries(1).toInt) {
+        val put = Put(i.toString, i.toString, self)
         val putMsg = RouteMsg(put.key, put)
         trigger(NetMessage(self, server, putMsg) -> net)
 
-        //KILLS ONLY ONE PROCESS PER PARTITION.
-        val killOp = Debug("Kill/key:"+value, self)
-        val routeMsg = RouteMsg(killOp.key, killOp)
-        trigger(NetMessage(self, server, routeMsg) -> net)
+        // successful for odd numbers
+        val prevValue = if(i % 2 == 1) i else -i
+        val cas = Cas(i.toString, prevValue.toString, (-i).toString, self)
+        val casMsg = RouteMsg(cas.key, cas)
+        trigger(NetMessage(self, server, casMsg) -> net)
 
 
-        val get = Get(value.toString, self)
+        val get = Get(i.toString, self)
         val getMsg = RouteMsg(get.key, get)
         trigger(NetMessage(self, server, getMsg) -> net)
         pending += (get.id -> get.key)
-
       }
     }
   }
@@ -71,7 +71,7 @@ class ScenarioClient7 extends ComponentDefinition {
   net uponEvent {
     case NetMessage(_, OpResponse(id, _, value))if pending contains id => handle {
       val resKey = pending(id)
-      SimulationResult += ("put/get:" + resKey -> value.get)
+      SimulationResult += ("put/cas/get:" + resKey -> value.get)
     }
   }
 }

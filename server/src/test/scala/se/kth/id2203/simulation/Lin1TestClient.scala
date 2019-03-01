@@ -34,7 +34,7 @@ import se.sics.kompics.timer.Timer
 import se.sics.kompics.sl.simulator.SimulationResult
 import collection.mutable
 
-class ScenarioClient1 extends ComponentDefinition {
+class Lin1TestClient extends ComponentDefinition {
 
   //******* Ports ******
   val net: PositivePort[Network] = requires[Network]
@@ -43,25 +43,30 @@ class ScenarioClient1 extends ComponentDefinition {
   val self: NetAddress = cfg.getValue[NetAddress]("id2203.project.address")
   val server: NetAddress = cfg.getValue[NetAddress]("id2203.project.bootstrap-address")
   private val pending: mutable.Map[UUID, String] = mutable.Map.empty
+  val value: Int = SimulationResult[String]("debugCode8").toInt
+  var state = 0
   //******* Handlers ******
   ctrl uponEvent {
     case _: Start => handle {
-      val messages = SimulationResult[Int]("debugCode1")
-      for (i <- 0 to messages) {
-        val op = Get(i.toString, self)
-        val routeMsg = RouteMsg(op.key, op) // don't know which partition is responsible, so ask the bootstrap server to forward it
-        trigger(NetMessage(self, server, routeMsg) -> net)
-        pending += (op.id -> op.key)
+        val put = Put(value.toString, "0", self)
+        val putMsg = RouteMsg(put.key, put)
+        trigger(NetMessage(self, server, putMsg) -> net)
+        pending += (put.id -> put.key)
       }
     }
-  }
 
   net uponEvent {
-    case NetMessage(_, OpResponse(id, _, value)) => handle {
-      pending.remove(id) match {
-        case Some(key) => SimulationResult += ("message" + key -> value.get);
-        case None => logger.warn("ID $id was not pending! Ignoring response.");
-      }
+    case NetMessage(_, OpResponse(id, _, _))if state == 0 => handle {
+      val get = Get(value.toString, self)
+      val getMsg = RouteMsg(get.key, get)
+      trigger(NetMessage(self, server, getMsg) -> net)
+      pending += (get.id -> get.key)
+      state = 1
+    }
+
+    case NetMessage(_, OpResponse(id, _, result)) if state == 1 => handle {
+      val resKey = pending(id)
+      SimulationResult += ("put/cas/get:" + resKey -> result.get)
     }
   }
 }

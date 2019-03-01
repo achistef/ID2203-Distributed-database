@@ -23,18 +23,18 @@
  */
 package se.kth.id2203.simulation
 
-import java.util.concurrent.atomic.AtomicInteger
-
+import java.util.UUID
 import se.kth.id2203.kvstore._
 import se.kth.id2203.networking._
 import se.kth.id2203.overlay.RouteMsg
+import se.sics.kompics.sl._
 import se.sics.kompics.Start
 import se.sics.kompics.network.Network
-import se.sics.kompics.sl._
-import se.sics.kompics.sl.simulator.SimulationResult
 import se.sics.kompics.timer.Timer
+import se.sics.kompics.sl.simulator.SimulationResult
+import collection.mutable
 
-class ScenarioClient2 extends ComponentDefinition {
+class DefaultValueTestClient extends ComponentDefinition {
 
   //******* Ports ******
   val net: PositivePort[Network] = requires[Network]
@@ -42,23 +42,26 @@ class ScenarioClient2 extends ComponentDefinition {
   //******* Fields ******
   val self: NetAddress = cfg.getValue[NetAddress]("id2203.project.address")
   val server: NetAddress = cfg.getValue[NetAddress]("id2203.project.bootstrap-address")
-
-  private val debugCode = "debugCode2"
-  private val counter = new AtomicInteger(1)
-
+  private val pending: mutable.Map[UUID, String] = mutable.Map.empty
   //******* Handlers ******
   ctrl uponEvent {
     case _: Start => handle {
-      val debugCodeValue = SimulationResult[String](this.debugCode)
-      val op = Debug(debugCodeValue, self)
-      val routeMsg = RouteMsg(op.key, op)
-      trigger(NetMessage(self, server, routeMsg) -> net)
+      val messages = SimulationResult[Int]("debugCode1")
+      for (i <- 0 to messages) {
+        val op = Get(i.toString, self)
+        val routeMsg = RouteMsg(op.key, op) // don't know which partition is responsible, so ask the bootstrap server to forward it
+        trigger(NetMessage(self, server, routeMsg) -> net)
+        pending += (op.id -> op.key)
+      }
     }
   }
 
   net uponEvent {
-    case NetMessage(_, OpResponse(_, _, value)) => handle {
-      SimulationResult += (debugCode + counter.getAndIncrement() -> value.get)
+    case NetMessage(_, OpResponse(id, _, value)) => handle {
+      pending.remove(id) match {
+        case Some(key) => SimulationResult += ("message" + key -> value.get);
+        case None => logger.warn("ID $id was not pending! Ignoring response.");
+      }
     }
   }
 }

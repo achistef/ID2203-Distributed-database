@@ -25,7 +25,6 @@ package se.kth.id2203.simulation
 
 import java.util.concurrent.atomic.AtomicInteger
 
-import se.kth.id2203.kompicsevents.BEB_Deliver
 import se.kth.id2203.kvstore._
 import se.kth.id2203.networking._
 import se.kth.id2203.overlay.RouteMsg
@@ -35,7 +34,7 @@ import se.sics.kompics.sl._
 import se.sics.kompics.sl.simulator.SimulationResult
 import se.sics.kompics.timer.Timer
 
-class ScenarioClient3 extends ComponentDefinition {
+class PartitionTestClient extends ComponentDefinition {
 
   //******* Ports ******
   val net: PositivePort[Network] = requires[Network]
@@ -44,13 +43,13 @@ class ScenarioClient3 extends ComponentDefinition {
   val self: NetAddress = cfg.getValue[NetAddress]("id2203.project.address")
   val server: NetAddress = cfg.getValue[NetAddress]("id2203.project.bootstrap-address")
 
-  private val debugCode = "debugCode3"
-  val debugCodeValue = SimulationResult[String](this.debugCode)
+  private val debugCode = "debugCode2"
   private val counter = new AtomicInteger(1)
 
   //******* Handlers ******
   ctrl uponEvent {
     case _: Start => handle {
+      val debugCodeValue = SimulationResult[String](this.debugCode)
       val op = Debug(debugCodeValue, self)
       val routeMsg = RouteMsg(op.key, op)
       trigger(NetMessage(self, server, routeMsg) -> net)
@@ -58,9 +57,8 @@ class ScenarioClient3 extends ComponentDefinition {
   }
 
   net uponEvent {
-    case NetMessage(header, BEB_Deliver(receiver, Debug(msg,_,_)))
-      if receiver == self && debugCodeValue == msg => handle {
-      SimulationResult += (debugCode + counter.getAndIncrement() -> ("BroadcastReply"+header.src))
+    case NetMessage(_, OpResponse(_, _, value)) => handle {
+      SimulationResult += (debugCode + counter.getAndIncrement() -> value.get)
     }
   }
 }

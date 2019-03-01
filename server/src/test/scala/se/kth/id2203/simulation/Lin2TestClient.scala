@@ -23,7 +23,6 @@
  */
 package se.kth.id2203.simulation
 
-import java.util.UUID
 import se.kth.id2203.kvstore._
 import se.kth.id2203.networking._
 import se.kth.id2203.overlay.RouteMsg
@@ -32,9 +31,8 @@ import se.sics.kompics.Start
 import se.sics.kompics.network.Network
 import se.sics.kompics.timer.Timer
 import se.sics.kompics.sl.simulator.SimulationResult
-import collection.mutable
 
-class ScenarioClient5 extends ComponentDefinition {
+class Lin2TestClient extends ComponentDefinition {
 
   //******* Ports ******
   val net: PositivePort[Network] = requires[Network]
@@ -42,29 +40,14 @@ class ScenarioClient5 extends ComponentDefinition {
   //******* Fields ******
   val self: NetAddress = cfg.getValue[NetAddress]("id2203.project.address")
   val server: NetAddress = cfg.getValue[NetAddress]("id2203.project.bootstrap-address")
-  private val pending: mutable.Map[UUID, String] = mutable.Map.empty
+  val value: Int = SimulationResult[String]("debugCode8").toInt
+  var state = 0
   //******* Handlers ******
   ctrl uponEvent {
     case _: Start => handle {
-      val range = SimulationResult[String]("debugCode5")
-      val boundaries = range.split('-')
-      for (i <- boundaries(0).toInt to boundaries(1).toInt) {
-        val put = Put(i.toString, i.toString, self)
-        val putMsg = RouteMsg(put.key, put)
-        trigger(NetMessage(self, server, putMsg) -> net)
-
-        val get = Get(i.toString, self)
-        val getMsg = RouteMsg(get.key, get)
-        trigger(NetMessage(self, server, getMsg) -> net)
-        pending += (get.id -> get.key)
-      }
-    }
-  }
-
-  net uponEvent {
-    case NetMessage(_, OpResponse(id, _, value))if pending contains id => handle {
-      val resKey = pending(id)
-      SimulationResult += ("put/get:" + resKey -> value.get)
+      val cas = Cas(value.toString, "0", "400", self)
+      val putMsg = RouteMsg(cas.key, cas)
+      trigger(NetMessage(self, server, putMsg) -> net)
     }
   }
 }

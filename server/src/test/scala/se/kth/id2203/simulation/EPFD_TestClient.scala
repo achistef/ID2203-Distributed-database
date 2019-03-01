@@ -23,18 +23,19 @@
  */
 package se.kth.id2203.simulation
 
-import java.util.UUID
+import java.util.concurrent.atomic.AtomicInteger
+
+import se.kth.id2203.kompicsevents.Suspect
 import se.kth.id2203.kvstore._
 import se.kth.id2203.networking._
 import se.kth.id2203.overlay.RouteMsg
-import se.sics.kompics.sl._
 import se.sics.kompics.Start
 import se.sics.kompics.network.Network
-import se.sics.kompics.timer.Timer
+import se.sics.kompics.sl._
 import se.sics.kompics.sl.simulator.SimulationResult
-import collection.mutable
+import se.sics.kompics.timer.Timer
 
-class ScenarioClient6 extends ComponentDefinition {
+class EPFD_TestClient extends ComponentDefinition {
 
   //******* Ports ******
   val net: PositivePort[Network] = requires[Network]
@@ -42,36 +43,29 @@ class ScenarioClient6 extends ComponentDefinition {
   //******* Fields ******
   val self: NetAddress = cfg.getValue[NetAddress]("id2203.project.address")
   val server: NetAddress = cfg.getValue[NetAddress]("id2203.project.bootstrap-address")
-  private val pending: mutable.Map[UUID, String] = mutable.Map.empty
+
+  private val debugCode = "debugCode4"
+  private val counter = new AtomicInteger(0)
+
   //******* Handlers ******
   ctrl uponEvent {
     case _: Start => handle {
-      val range = SimulationResult[String]("debugCode6")
-      val boundaries = range.split('-')
-      for (i <- boundaries(0).toInt to boundaries(1).toInt) {
-        val put = Put(i.toString, i.toString, self)
-        val putMsg = RouteMsg(put.key, put)
-        trigger(NetMessage(self, server, putMsg) -> net)
-
-        // successful for odd numbers
-        val prevValue = if(i % 2 == 1) i else -i
-        val cas = Cas(i.toString, prevValue.toString, (-i).toString, self)
-        val casMsg = RouteMsg(cas.key, cas)
-        trigger(NetMessage(self, server, casMsg) -> net)
-
-
-        val get = Get(i.toString, self)
-        val getMsg = RouteMsg(get.key, get)
-        trigger(NetMessage(self, server, getMsg) -> net)
-        pending += (get.id -> get.key)
-      }
+      val debugCodeValue = SimulationResult[String](this.debugCode)
+      val op = Debug(debugCodeValue, self)
+      val routeMsg = RouteMsg(op.key, op)
+      trigger(NetMessage(self, server, routeMsg) -> net)
     }
   }
 
   net uponEvent {
-    case NetMessage(_, OpResponse(id, _, value))if pending contains id => handle {
-      val resKey = pending(id)
-      SimulationResult += ("put/cas/get:" + resKey -> value.get)
+    case NetMessage(_, OpResponse(_, _, _)) if counter.get == 0 => handle {
+      val db = Debug("Kill/key:100", self)
+      trigger(NetMessage(self, server, RouteMsg(db.key, db)) -> net)
+      counter.incrementAndGet()
+    }
+
+    case NetMessage(src, Suspect(p)) => handle {
+      SimulationResult += (debugCode + counter.getAndIncrement() -> (src.src + ":suspects:" + p))
     }
   }
 }

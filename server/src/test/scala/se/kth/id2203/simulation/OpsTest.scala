@@ -45,7 +45,7 @@ import scala.concurrent.duration._
 class OpsTest extends FlatSpec with Matchers {
 
   private val nMessages = 10
-  /**
+
   "Get operation with <key>=[0,10]" should "return pre-loaded values 10-<key>" in {
     val seed = 123l
     JSimulationScenario.setSeed(seed)
@@ -214,7 +214,7 @@ class OpsTest extends FlatSpec with Matchers {
       SimulationResult.get[String]("put/get:"+i.toString).get shouldBe i.toString
     }
   }
-  */
+
 
   "Put/Cas/Get operation with 2 clients" should "be linearizable" in {
     // client 1 performs put 400 0

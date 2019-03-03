@@ -48,6 +48,12 @@ case class Put(key: String, value: String, source: NetAddress, id: UUID = UUID.r
 @SerialVersionUID(0xfacc6612da2139eaL)
 case class Cas(key: String, oldValue:String, newValue:String, source: NetAddress, id: UUID = UUID.randomUUID()) extends Op
 
+@SerialVersionUID(0xfacc6612da2139eaL)
+case class StopSign(source: NetAddress) extends Op {
+  override def id: UUID = UUID.randomUUID()
+  override def key: String = "StopSign"
+}
+
 @SerialVersionUID(0xfacc6612da2136eaL)
 case class Debug(key: String, source: NetAddress, id: UUID = UUID.randomUUID()) extends Op
 

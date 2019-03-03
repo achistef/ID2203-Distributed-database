@@ -1,12 +1,15 @@
 package se.kth.id2203.sequencepaxos
 
+import java.util.UUID
+
 import se.kth.id2203.kompicsevents.{Accept, _}
-import se.kth.id2203.kvstore.Op
+import se.kth.id2203.kvstore.{Op, StopSign}
 import se.kth.id2203.networking.{NetAddress, NetMessage}
 import se.sics.kompics.network._
 import se.sics.kompics.sl._
 
-import scala.collection.mutable;
+import scala.collection.mutable
+import scala.math.Ordering.Implicits._
 
 class SequenceConsensus extends Port {
   request[SC_Propose];
@@ -16,7 +19,7 @@ class SequenceConsensus extends Port {
 
 object State extends Enumeration {
   type State = Value;
-  val PREPARE, ACCEPT, UNKOWN = Value;
+  val PREPARE, ACCEPT, UNKOWN, STOPPED = Value;
 }
 
 object Role extends Enumeration {
@@ -29,42 +32,71 @@ class SequencePaxos extends ComponentDefinition {
   import Role._
   import State._
 
+  // implements
   val sc = provides[SequenceConsensus];
+  // requires
   val ble = requires[BallotLeaderElection];
   val pl = requires[Network];
-  val las = mutable.Map.empty[NetAddress, Int];
-  val lds = mutable.Map.empty[NetAddress, Int];
-  val acks = mutable.Map.empty[NetAddress, (Long, List[Op])];
+
+
+  var i = 0l
+  val ci = 0l;    // configuration of the replica
+  var pi = Set[NetAddress]()    // set of processes in configuration
+  var replica:Set[NetAddress] = Set[NetAddress]()    // set of replicas in ci
+  var state: (Role.Value, State.Value) = (FOLLOWER, UNKOWN);    // role and phase state
+  var finalSeq = List.empty[Op] // final sequence from prev config
+  // proposer state
+  var nL = (i, 0l);    // leaders (round, number)
+  val acks = mutable.Map.empty[NetAddress, (Long, List[Op])];   // promises
+  val las = mutable.Map.empty[NetAddress, Int];   // length of longest accepted sequence per acceptor
+  val lds = mutable.Map.empty[NetAddress, Int];   // length of longest known sequence per acceptor
+  // acceptor
+  var propCmds = List.empty[Op];    // set of commands that need to be appended to the log
+  var lc = 0;   // length of the longest chosen sequence
+  // acceptor state
+  var nProm = (i, 0l);   // promise not to accept lower rounds
+  var na = 0l;    // round number
+  var va = List.empty[Op];    // sequence accepted
+  // learner state
+  var ld = 0;   // length of decided sequence
+
+
   var self = cfg.getValue[NetAddress]("id2203.project.address");
-  var pi = Set[NetAddress]()
   var others = Set[NetAddress]()
   var majority: Int = (pi.size / 2) + 1;
-  var state: (Role.Value, State.Value) = (FOLLOWER, UNKOWN);
-  var nL = 0l;
-  var nProm = 0l;
   var leader: Option[NetAddress] = None;
-  var na = 0l;
-  var va = List.empty[Op];
-  var ld = 0;
-  // leader state
-  var propCmds = List.empty[Op];
-  var lc = 0;
+
+  val SS: Op = StopSign(self)
+
+  def stopped(): Boolean = {
+    if (va.nonEmpty) {
+      if (va(ld) == SS) {
+        return true
+      }
+    }
+    false
+  }
+
 
   ble uponEvent {
     case BLE_Leader(l, n) => handle {
-      if (n > nL) {
+      var b = (i, n)
+      if (b > nL) {
         leader = Some(l);
         println(s"NEW LEADER ELECTED: $leader");
-        nL = n;
+        nL = b
+        //nProm = b
         if (self == l && nL > nProm) {
+          println(s"<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<$self: I'm the leader!")
           state = (LEADER, PREPARE);
+
           propCmds = List.empty[Op];
           for (p <- pi) {
             las += ((p, 0))
           }
           lds.clear;
           acks.clear;
-          lc = 0;
+          lc = finalSeq.size;
           for (p <- pi - self) {
             trigger(NetMessage(self, p, Prepare(nL, ld, na)) -> pl);
           }
@@ -99,8 +131,27 @@ class SequencePaxos extends ComponentDefinition {
         if (P.size == majority) {
           var (k, sfx) = acks.maxBy { case (add, (v, comm)) => v };
           va = prefix(va, ld) ++ sfx._2 ++ propCmds;
+          // SS in va
+
+          if (va.nonEmpty) {
+            if (va.last == SS) {
+              propCmds = List.empty[Op]
+            } else if (propCmds.nonEmpty) {
+              if (propCmds.contains(SS)) {
+                println("Dropping commands due to SS")
+              } else {
+                for (c <- propCmds) {
+                  if (propCmds.contains(c)) {
+                    va :+= c
+                  }
+                }
+              }
+            }
+
+          }
+
           las(self) = va.size
-          propCmds = List.empty[Op];
+          //propCmds = List.empty[Op];
           state = (LEADER, ACCEPT);
           for (p <- pi) {
             if ((lds isDefinedAt p) && p != self) {
@@ -120,7 +171,7 @@ class SequencePaxos extends ComponentDefinition {
     }
     case NetMessage(p, AcceptSync(nL, sfx, ldp)) => handle {
       if ((nProm == nL) && (state == (FOLLOWER, PREPARE))) {
-        na = nL;
+        na = nL._2;
         va = prefix(va, ldp) ++ sfx;
         trigger(NetMessage(self, p.src, Accepted(nL, va.size)) -> pl);
         state = (FOLLOWER, ACCEPT);
@@ -135,6 +186,7 @@ class SequencePaxos extends ComponentDefinition {
     case NetMessage(h, Decide(l, nL)) => handle {
       if (nProm == nL) {
         while (ld < l) {
+          //println(s"<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< $va")
           trigger(SC_Decide(va(ld)) -> sc);
           ld += 1;
         }
@@ -162,9 +214,11 @@ class SequencePaxos extends ComponentDefinition {
       if (state == (LEADER, PREPARE)) {
         propCmds :+= c;
       }
-      else if (state == (LEADER, ACCEPT)) {
+        // added this
+      else if (state == (LEADER, ACCEPT) && !stopped()) {
         va :+= c;
-        las(self) += 1;
+        //las(self) += 1;
+        las(self) += va.size;
         for (p <- pi) {
           if ((lds isDefinedAt p) && p != self) {
             trigger(NetMessage(self, p, Accept(nL, c)) -> pl);

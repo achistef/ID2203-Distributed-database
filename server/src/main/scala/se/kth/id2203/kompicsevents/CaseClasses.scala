@@ -4,7 +4,6 @@ import se.kth.id2203.kvstore.Op
 import se.kth.id2203.networking.{NetAddress, NetHeader}
 import se.kth.id2203.overlay.LookupTable
 import se.sics.kompics.KompicsEvent
-import se.sics.kompics.network.Address
 import se.sics.kompics.timer.{ScheduleTimeout, Timeout}
 
 import scala.collection.immutable.Set
@@ -29,17 +28,19 @@ case class Restore(process: NetAddress) extends KompicsEvent;
 
 case class StartDetector(lookupTable: Option[LookupTable], nodes: Set[NetAddress]) extends KompicsEvent;
 
-case class Prepare(nL: Long, ld: Int, na: Long) extends KompicsEvent;
+case class StopSign(c: Op) extends KompicsEvent;
 
-case class Promise(nL: Long, na: Long, suffix: List[Op], ld: Int) extends KompicsEvent;
+case class Prepare(nL: (Long, Long), ld: Int, na: Long) extends KompicsEvent;
 
-case class AcceptSync(nL: Long, suffix: List[Op], ld: Int) extends KompicsEvent;
+case class Promise(nL: (Long, Long), na: Long, suffix: List[Op], ld: Int) extends KompicsEvent;
 
-case class Accept(nL: Long, c: Op) extends KompicsEvent;
+case class AcceptSync(nL: (Long, Long), suffix: List[Op], ld: Int) extends KompicsEvent;
 
-case class Accepted(nL: Long, m: Int) extends KompicsEvent;
+case class Accept(nL: (Long, Long), c: Op) extends KompicsEvent;
 
-case class Decide(ld: Int, nL: Long) extends KompicsEvent;
+case class Accepted(nL: (Long, Long), m: Int) extends KompicsEvent;
+
+case class Decide(ld: Int, nL: (Long, Long)) extends KompicsEvent;
 
 case class StartSequenceCons(nodes: Set[NetAddress]) extends KompicsEvent;
 

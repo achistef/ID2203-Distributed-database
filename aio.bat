@@ -1,6 +1,6 @@
 cd %~dp0
 
-call sbt clean compile server/assembly 
+call sbt clean compile server/assembly client/assembly
 
 xcopy /e /y .\common .\test\s\common\
 xcopy /e /y .\common .\test\c\common\

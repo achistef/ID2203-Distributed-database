@@ -29,7 +29,8 @@ import org.apache.log4j.Layout
 import util.log4j.ColoredPatternLayout
 import fastparse.all._
 import se.kth.id2203.networking.NetAddress
-import concurrent.Await
+
+import concurrent.{Await, Future}
 import concurrent.duration._
 
 object ClientConsole {
@@ -94,6 +95,22 @@ class ClientConsole(val service: ClientService) extends CommandConsole with Pars
       val r = Await.result(fr, 5.seconds)
       // TODO : this is the source of the response
       out.println("***********Operation complete! Response was: " + r.status + ", Returned value: "+ r.value);
+    } catch {
+      case _: Throwable => // the promise  always throws an exception... let's not print it
+    }
+  };
+
+  val benchmarkCommand = parsed(P("benchmark" ~ " " ~ simpleStr), usage = "benchmark <num>", descr = "Sends Get 0 <num> times and counts how long it takes") { num =>
+    val startingTime = System.currentTimeMillis()
+    var lastResponse: Option[Future[OpResponse]] = None
+    for(i <- 1 to num.toInt){
+      lastResponse = Some(service.get("0"))
+    }
+    try {
+      val r = Await.result(lastResponse.get, 100.seconds)
+      val finishTime = System.currentTimeMillis()
+      val secDiff = (finishTime - startingTime) / 1000
+      println("BENCHMARK COMPLETE. Store replied to "+num+ " get commands in "+secDiff + "seconds")
     } catch {
       case _: Throwable => // the promise  always throws an exception... let's not print it
     }

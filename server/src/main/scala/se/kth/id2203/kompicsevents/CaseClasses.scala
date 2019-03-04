@@ -29,7 +29,8 @@ case class Restore(process: NetAddress) extends KompicsEvent;
 
 case class StartDetector(lookupTable: Option[LookupTable], nodes: Set[NetAddress]) extends KompicsEvent;
 
-case class Prepare(nL: Long, ld: Int, na: Long) extends KompicsEvent;
+//case class Prepare(nL: Long, ld: Int, na: Long) extends KompicsEvent;
+case class Prepare(nL: Long, ld: Int, na: Long, newLeader: Boolean) extends KompicsEvent;
 
 case class Promise(nL: Long, na: Long, suffix: List[Op], ld: Int) extends KompicsEvent;
 

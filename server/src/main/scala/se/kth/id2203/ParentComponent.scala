@@ -76,6 +76,7 @@ class ParentComponent extends ComponentDefinition {
     connect[Network](net -> ble);
     // Sequence Consensus
     connect[Network](net -> seqCons);
+    connect[Timer](timer -> seqCons);
     connect[BallotLeaderElection](ble -> seqCons);
   }
 }

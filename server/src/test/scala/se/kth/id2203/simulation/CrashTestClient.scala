@@ -42,7 +42,8 @@ class CrashTestClient extends ComponentDefinition {
   //******* Fields ******
   val self: NetAddress = cfg.getValue[NetAddress]("id2203.project.address")
   val server: NetAddress = cfg.getValue[NetAddress]("id2203.project.bootstrap-address")
-  private val pending: mutable.Map[UUID, String] = mutable.Map.empty
+  private val putPending: mutable.Map[UUID, String] = mutable.Map.empty
+  private val getPending: mutable.Map[UUID, String] = mutable.Map.empty
   //******* Handlers ******
   ctrl uponEvent {
     case _: Start => handle {
@@ -52,25 +53,27 @@ class CrashTestClient extends ComponentDefinition {
         val put = Put(value.toString, value.toString, self)
         val putMsg = RouteMsg(put.key, put)
         trigger(NetMessage(self, server, putMsg) -> net)
+        putPending += (put.id -> put.key)
 
         //KILLS ONLY ONE PROCESS PER PARTITION.
         val killOp = Debug("Kill/key:"+value, self)
         val routeMsg = RouteMsg(killOp.key, killOp)
         trigger(NetMessage(self, server, routeMsg) -> net)
-
-
-        val get = Get(value.toString, self)
-        val getMsg = RouteMsg(get.key, get)
-        trigger(NetMessage(self, server, getMsg) -> net)
-        pending += (get.id -> get.key)
-
       }
     }
   }
 
   net uponEvent {
-    case NetMessage(_, OpResponse(id, _, value))if pending contains id => handle {
-      val resKey = pending(id)
+
+    case NetMessage(_, OpResponse(id, _, value))if putPending contains id => handle {
+      val resKey = putPending(id)
+      val get = Get(resKey, self)
+      val getMsg = RouteMsg(get.key, get)
+      trigger(NetMessage(self, server, getMsg) -> net)
+      getPending += (get.id -> get.key)
+    }
+    case NetMessage(_, OpResponse(id, _, value))if getPending contains id => handle {
+      val resKey = getPending(id)
       SimulationResult += ("put/get:" + resKey -> value.get)
     }
   }

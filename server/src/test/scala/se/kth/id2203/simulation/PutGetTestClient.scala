@@ -42,7 +42,8 @@ class PutGetTestClient extends ComponentDefinition {
   //******* Fields ******
   val self: NetAddress = cfg.getValue[NetAddress]("id2203.project.address")
   val server: NetAddress = cfg.getValue[NetAddress]("id2203.project.bootstrap-address")
-  private val pending: mutable.Map[UUID, String] = mutable.Map.empty
+  private val putPending: mutable.Map[UUID, String] = mutable.Map.empty
+  private val getPending: mutable.Map[UUID, String] = mutable.Map.empty
   //******* Handlers ******
   ctrl uponEvent {
     case _: Start => handle {
@@ -52,18 +53,22 @@ class PutGetTestClient extends ComponentDefinition {
         val put = Put(i.toString, i.toString, self)
         val putMsg = RouteMsg(put.key, put)
         trigger(NetMessage(self, server, putMsg) -> net)
-
-        val get = Get(i.toString, self)
-        val getMsg = RouteMsg(get.key, get)
-        trigger(NetMessage(self, server, getMsg) -> net)
-        pending += (get.id -> get.key)
+        putPending += (put.id -> put.key)
       }
     }
   }
 
   net uponEvent {
-    case NetMessage(_, OpResponse(id, _, value))if pending contains id => handle {
-      val resKey = pending(id)
+    case NetMessage(_, OpResponse(id, _, value))if putPending contains id => handle {
+      val resKey = putPending(id)
+      val get = Get(resKey, self)
+      val getMsg = RouteMsg(get.key, get)
+      trigger(NetMessage(self, server, getMsg) -> net)
+      getPending += (get.id -> get.key)
+    }
+
+    case NetMessage(_, OpResponse(id, _, value))if getPending contains id => handle {
+      val resKey = getPending(id)
       SimulationResult += ("put/get:" + resKey -> value.get)
     }
   }

@@ -217,15 +217,34 @@ class OpsTest extends FlatSpec with Matchers {
 
 
   "Put/Cas/Get operation with 2 clients" should "be linearizable" in {
+    // this is just one simple test with two client
     // client 1 performs put 400 0
     // client 2 performs cas 400 0 400
     // client 1 performs get 400 and saves the result to the simulation map
     // the result should be 400
-    // there is no sync provided between clients...
     val seed = 123l
     JSimulationScenario.setSeed(seed)
     val simpleBootScenario =
       SimpleScenario.twoClientScenario(6, SimpleScenario.lin1Client, SimpleScenario.lin2Client)
+    SimulationResultSingleton.getInstance()
+
+    val value = 400
+    SimulationResult += ("debugCode8" -> value.toString)
+    simpleBootScenario.simulate(classOf[LauncherComp])
+    SimulationResult.get[String]("put/cas/get:"+value.toString).get shouldBe "400"
+  }
+
+  "Put/Cas/Get operation with 2 clients" should "be linearizable with one node failure" in {
+    // this is just one simple test with two client
+    // client 1 performs put 400 0
+    // one node in partition crashes
+    // client 2 performs cas 400 0 400
+    // client 1 performs get 400 and saves the result to the simulation map
+    // the result should be 400
+    val seed = 123l
+    JSimulationScenario.setSeed(seed)
+    val simpleBootScenario =
+      SimpleScenario.twoClientScenario(6, SimpleScenario.lin1Client, SimpleScenario.lin3Client)
     SimulationResultSingleton.getInstance()
 
     val value = 400
@@ -353,6 +372,14 @@ object SimpleScenario {
   }
 
   val lin2Client = Op { self: Integer =>
+    val selfAddr = intToClientAddress(self+1)
+    val conf = Map(
+      "id2203.project.address" -> selfAddr,
+      "id2203.project.bootstrap-address" -> intToServerAddress(1))
+    StartNode(selfAddr, Init.none[Lin2TestClient], conf);
+  }
+
+  val lin3Client = Op { self: Integer =>
     val selfAddr = intToClientAddress(self+1)
     val conf = Map(
       "id2203.project.address" -> selfAddr,

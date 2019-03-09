@@ -21,33 +21,37 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package se.kth.id2203.kvstore;
+package se.kth.id2203.kvstore
 
-import java.util.UUID;
-import se.kth.id2203.networking._;
+;
 
-import se.kth.id2203.overlay._;
-import se.sics.kompics.sl._;
-import se.sics.kompics.{ Start, Kompics, KompicsEvent };
-import se.sics.kompics.network.Network;
-import se.sics.kompics.timer._;
-import collection.mutable;
-import concurrent.{ Promise, Future };
+import java.util.UUID
+
+import se.kth.id2203.networking._
+import se.kth.id2203.overlay._
+import se.sics.kompics.network.Network
+import se.sics.kompics.sl._
+import se.sics.kompics.timer._
+import se.sics.kompics.{Kompics, KompicsEvent, Start}
+
+import scala.collection.mutable
+import scala.concurrent.{Future, Promise};
 
 case class ConnectTimeout(spt: ScheduleTimeout) extends Timeout(spt);
+
 case class OpWithPromise(op: Operation, promise: Promise[OpResponse] = Promise()) extends KompicsEvent;
 
 class ClientService extends ComponentDefinition {
 
   //******* Ports ******
-  val timer = requires[Timer];
-  val net = requires[Network];
+  val timer: PositivePort[Timer] = requires[Timer];
+  val net: PositivePort[Network] = requires[Network];
   //******* Fields ******
-  val self = cfg.getValue[NetAddress]("id2203.project.address");
-  val server = cfg.getValue[NetAddress]("id2203.project.bootstrap-address");
+  val self: NetAddress = cfg.getValue[NetAddress]("id2203.project.address");
+  val server: NetAddress = cfg.getValue[NetAddress]("id2203.project.bootstrap-address");
+  private val pending = mutable.SortedMap.empty[UUID, Promise[OpResponse]];
   private var connected: Option[ConnectAck] = None;
   private var timeoutId: Option[UUID] = None;
-  private val pending = mutable.SortedMap.empty[UUID, Promise[OpResponse]];
 
   //******* Handlers ******
   ctrl uponEvent {
@@ -56,7 +60,7 @@ class ClientService extends ComponentDefinition {
       val timeout: Long = (cfg.getValue[Long]("id2203.project.keepAlivePeriod") * 2l);
       val st: ScheduleTimeout = new ScheduleTimeout(timeout);
       st.setTimeoutEvent(ConnectTimeout(st));
-      trigger (st -> timer);
+      trigger(st -> timer);
       timeoutId = Some(st.getTimeoutEvent().getTimeoutId());
       trigger(NetMessage(self, server, Connect(timeoutId.get)) -> net);
       trigger(st -> timer);
@@ -64,7 +68,7 @@ class ClientService extends ComponentDefinition {
   }
 
   net uponEvent {
-    case NetMessage(header, ack @ ConnectAck(id, clusterSize)) => handle {
+    case NetMessage(header, ack@ConnectAck(id, clusterSize)) => handle {
       log.info(s"Client connected to $server, cluster size is $clusterSize");
       if (id != timeoutId.get) {
         log.error("Received wrong response id! System may be inconsistent. Shutting down...");
@@ -75,11 +79,11 @@ class ClientService extends ComponentDefinition {
       val tc = new Thread(c);
       tc.start();
     }
-    case NetMessage(header, or @ OpResponse(id, status, value)) => handle {
+    case NetMessage(header, or@OpResponse(id, status, value)) => handle {
       log.debug(s"Got OpResponse: $or");
       pending.remove(id) match {
         case Some(promise) => promise.success(or);
-        case None          => None;        // ignore unknown replies
+        case None => None; // ignore unknown replies
       }
     }
   }

@@ -21,9 +21,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package se.kth.id2203.bootstrapping;
+package se.kth.id2203.bootstrapping
 
-import se.sics.kompics.timer.SchedulePeriodicTimeout;
-import se.sics.kompics.timer.Timeout;
+;
+
+import se.sics.kompics.timer.{SchedulePeriodicTimeout, Timeout};
 
 case class BSTimeout(spt: SchedulePeriodicTimeout) extends Timeout(spt);

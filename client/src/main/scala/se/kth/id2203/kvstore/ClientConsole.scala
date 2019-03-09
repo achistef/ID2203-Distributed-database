@@ -25,13 +25,12 @@ package se.kth.id2203.kvstore
 
 import com.larskroll.common.repl._
 import com.typesafe.scalalogging.StrictLogging
+import fastparse.all._
 import org.apache.log4j.Layout
 import util.log4j.ColoredPatternLayout
-import fastparse.all._
-import se.kth.id2203.networking.NetAddress
 
-import concurrent.{Await, Future}
-import concurrent.duration._
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 
 object ClientConsole {
   // Better build this statically. Has some overhead (building a lookup table).
@@ -40,10 +39,8 @@ object ClientConsole {
 }
 
 class ClientConsole(val service: ClientService) extends CommandConsole with ParsedCommands with StrictLogging {
-  import ClientConsole._;
 
-  override def layout: Layout = colouredLayout;
-  override def onInterrupt(): Unit = exit();
+  import ClientConsole._;
 
   val getCommand = parsed(P("get" ~ " " ~ simpleStr), usage = "get <key>", descr = "Executes a get for <key>.") { key =>
     println(s"Get with $key");
@@ -52,14 +49,11 @@ class ClientConsole(val service: ClientService) extends CommandConsole with Pars
     out.println("Operation sent! Awaiting response...");
     try {
       val r = Await.result(fr, 5.seconds);
-      out.println();
-      out.println("*******************Operation complete! Response was: " + r.status + ", Returned value: " + r.value.getOrElse(None));
-      out.println();
+      out.println("Operation complete! Response was: " + r.status + ", Returned value: " + r.value.getOrElse(None));
     } catch {
       case e: Throwable => logger.error("Error during get.", e);
     }
   };
-
   val putCommand = parsed(P("put" ~ " " ~ simpleStr ~ " " ~ simpleStr), usage = "put <key> <value>", descr = "Executes a put for <key> and <value>.") { tuple =>
     println(s"Put with $tuple")
 
@@ -67,25 +61,23 @@ class ClientConsole(val service: ClientService) extends CommandConsole with Pars
     out.println("Operation sent! Awaiting response...");
     try {
       val r = Await.result(fr, 5.seconds);
-      out.println("*******************Operation complete! Response was: " + r.status);
+      out.println("Operation complete! Response was: " + r.status);
     } catch {
       case e: Throwable => logger.error("Error during put.", e);
     }
   };
-
-  val casCommand = parsed(P("cas" ~ " " ~ simpleStr~ " " ~ simpleStr~ " " ~ simpleStr), usage = "cas <key> <oldValue> <newValue>", descr = "Executes put <key> <newValue> if get <key> equals <oldValue>") { tuple =>
+  val casCommand = parsed(P("cas" ~ " " ~ simpleStr ~ " " ~ simpleStr ~ " " ~ simpleStr), usage = "cas <key> <oldValue> <newValue>", descr = "Executes put <key> <newValue> if get <key> equals <oldValue>") { tuple =>
     println(s"Cas with $tuple");
 
     val fr = service.cas(tuple._1, tuple._2, tuple._3);
     out.println("Operation sent! Awaiting response...");
     try {
       val r = Await.result(fr, 5.seconds);
-      out.println("*******************Operation complete! Response was:" + r.status + ", Returned value: "+ r.value.getOrElse(None));
+      out.println("Operation complete! Response was:" + r.status + ", Returned value: " + r.value.getOrElse(None));
     } catch {
       case e: Throwable => logger.error("Error during op.", e);
     }
   };
-
   val debugCommand = parsed(P("debug" ~ " " ~ simpleStr), usage = "debug <debugCodeID>", descr = "Returns the debug info associated with <debugCodeID>") { debugCodeID =>
     println(s"Debug with $debugCodeID");
 
@@ -93,28 +85,30 @@ class ClientConsole(val service: ClientService) extends CommandConsole with Pars
     out.println("Operation sent! Awaiting response...");
     try {
       val r = Await.result(fr, 5.seconds)
-      // TODO : this is the source of the response
-      out.println("***********Operation complete! Response was: " + r.status + ", Returned value: "+ r.value);
+      out.println("Operation complete! Response was: " + r.status + ", Returned value: " + r.value);
     } catch {
       case _: Throwable => // the promise  always throws an exception... let's not print it
     }
   };
-
   val benchmarkCommand = parsed(P("benchmark" ~ " " ~ simpleStr), usage = "benchmark <num>", descr = "Sends Get 0 <num> times and counts how long it takes") { num =>
     out.println("Sending operations....")
     val startingTime = System.currentTimeMillis()
     var lastResponse: Option[Future[OpResponse]] = None
-    for(i <- 1 to num.toInt){
+    for (i <- 1 to num.toInt) {
       lastResponse = Some(service.get("0"))
     }
     try {
       val r = Await.result(lastResponse.get, 100.seconds)
       val finishTime = System.currentTimeMillis()
       val secDiff = (finishTime - startingTime) / 1000
-      println("BENCHMARK COMPLETE. Store replied to "+num+ " get commands in "+secDiff + "seconds")
+      println("BENCHMARK COMPLETE. Store replied to " + num + " get commands in " + secDiff + "seconds")
     } catch {
       case _: Throwable => // the promise  always throws an exception... let's not print it
     }
   };
+
+  override def layout: Layout = colouredLayout;
+
+  override def onInterrupt(): Unit = exit();
 
 }

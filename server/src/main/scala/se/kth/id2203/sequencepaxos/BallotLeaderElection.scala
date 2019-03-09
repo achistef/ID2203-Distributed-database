@@ -15,12 +15,12 @@ class BallotLeaderElection extends Port {
 
 class GossipLeaderElection extends ComponentDefinition {
 
-  val ble = provides[BallotLeaderElection];
-  val pl = requires[Network];
-  val timer = requires[Timer];
+  val ble: NegativePort[BallotLeaderElection] = provides[BallotLeaderElection];
+  val pl: PositivePort[Network] = requires[Network];
+  val timer: PositivePort[Timer] = requires[Timer];
 
-  val self = cfg.getValue[NetAddress]("id2203.project.address");
-  val delta = cfg.getValue[Long]("id2203.project.leaderElectionInterval");
+  val self: NetAddress = cfg.getValue[NetAddress]("id2203.project.address");
+  val delta: Long = cfg.getValue[Long]("id2203.project.leaderElectionInterval");
   private val ballots = mutable.Map.empty[NetAddress, Long];
   private val ballotOne = 0x0100000000l;
   var topology: Set[NetAddress] = Set.empty;
@@ -104,9 +104,6 @@ class GossipLeaderElection extends ComponentDefinition {
       makeLeader((topBallot, topProcess));
       trigger(BLE_Leader(topProcess, topBallot) -> ble);
     }
-//    println()
-//    println(s"LEADER IS $leader")
-//    println()
   }
 
   private def makeLeader(topProcess: (Long, NetAddress)) {

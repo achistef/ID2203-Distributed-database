@@ -21,27 +21,34 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package se.kth.id2203.bootstrapping;
+package se.kth.id2203.bootstrapping
+
+;
 
 import java.util.UUID
 
 import se.kth.id2203.networking._
-import se.sics.kompics.sl._
 import se.sics.kompics.Start
 import se.sics.kompics.network.Network
+import se.sics.kompics.sl._
 import se.sics.kompics.timer._
 
-import collection.mutable;
+import scala.collection.mutable;
 
 object BootstrapServer {
+
   sealed trait State;
+
   case object Collecting extends State;
+
   case object Seeding extends State;
+
   case object Done extends State;
 
 }
 
 class BootstrapServer extends ComponentDefinition {
+
   import BootstrapServer._;
 
   //******* Ports ******
@@ -51,15 +58,10 @@ class BootstrapServer extends ComponentDefinition {
   //******* Fields ******
   val self = cfg.getValue[NetAddress]("id2203.project.address");
   val bootThreshold = cfg.getValue[Int]("id2203.project.bootThreshold");
-  println(" --------------- ")
-  println()
-  println ("threshold =  " + bootThreshold)
-  println()
-  println(" --------------- ")
-  private var state: State = Collecting;
-  private var timeoutId: Option[UUID] = None;
   private val active = mutable.HashSet.empty[NetAddress];
   private val ready = mutable.HashSet.empty[NetAddress];
+  private var state: State = Collecting;
+  private var timeoutId: Option[UUID] = None;
   private var initialAssignment: Option[NodeAssignment] = None;
   //******* Handlers ******
   ctrl uponEvent {
@@ -68,7 +70,7 @@ class BootstrapServer extends ComponentDefinition {
       val timeout: Long = (cfg.getValue[Long]("id2203.project.keepAlivePeriod") * 2l);
       val spt = new SchedulePeriodicTimeout(timeout, timeout);
       spt.setTimeoutEvent(BSTimeout(spt));
-      trigger (spt -> timer);
+      trigger(spt -> timer);
       timeoutId = Some(spt.getTimeoutEvent().getTimeoutId());
       active += self;
     }
@@ -129,7 +131,7 @@ class BootstrapServer extends ComponentDefinition {
   override def tearDown(): Unit = {
     timeoutId match {
       case Some(tid) => trigger(new CancelPeriodicTimeout(tid) -> timer);
-      case None      => // nothing to clean up
+      case None => // nothing to clean up
     }
   }
 

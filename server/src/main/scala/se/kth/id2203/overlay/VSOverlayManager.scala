@@ -25,17 +25,14 @@ package se.kth.id2203.overlay
 
 import se.kth.id2203.beb.BestEffortBroadcast
 import se.kth.id2203.bootstrapping._
-import se.kth.id2203.kompicsevents._
 import se.kth.id2203.failuredetector.EventuallyPerfectFailureDetector
-import se.kth.id2203.kompicsevents
+import se.kth.id2203.kompicsevents._
 import se.kth.id2203.kvstore.{Debug, Op, OpCode}
 import se.kth.id2203.networking._
 import se.kth.id2203.sequencepaxos.SequenceConsensus
+import se.sics.kompics.network.Network
 import se.sics.kompics.sl._
-import se.sics.kompics.network.{Address, Network}
 import se.sics.kompics.timer.Timer
-
-import util.Random
 
 /**
   * The V(ery)S(imple)OverlayManager.
@@ -45,6 +42,7 @@ import util.Random
   * Note: This implementation does not fulfill the project task. You have to
   * support multiple partitions!
   * <p>
+  *
   * @author Lars Kroll <lkroll@kth.se>
   */
 
@@ -57,31 +55,26 @@ class VSOverlayManager extends ComponentDefinition {
   val timer: PositivePort[Timer] = requires[Timer]
   val epfd: PositivePort[EventuallyPerfectFailureDetector] = requires[EventuallyPerfectFailureDetector]
   val beb: PositivePort[BestEffortBroadcast] = requires[BestEffortBroadcast]
-  var seqCons: PositivePort[SequenceConsensus] = requires[SequenceConsensus]
-  var suspected = Set[NetAddress]()
-
   //******* Fields ******
   val self: NetAddress = cfg.getValue[NetAddress]("id2203.project.address")
+  var seqCons: PositivePort[SequenceConsensus] = requires[SequenceConsensus]
+  var suspected = Set[NetAddress]()
   private var lut: Option[LookupTable] = None
 
 
   //******* Handlers ******
   beb uponEvent {
     case BEB_Deliver(src, payload) => handle {
-      println("************************")
       println(s"(BEB) Received broadcast from $src with $payload");
-      println("************************");
       trigger(NetMessage(src, self, payload) -> net);
     }
   }
 
   epfd uponEvent {
     case Suspect(p) => handle {
-      println(s">>> $p suspected")
       suspected += p
     }
     case Restore(p) => handle {
-      println(s">>> $p resored")
       suspected -= p
     }
   }
@@ -92,17 +85,12 @@ class VSOverlayManager extends ComponentDefinition {
       println("Generating LookupTable...")
       val delta = cfg.getValue[Int]("id2203.project.delta")
       val lut = LookupTable.generate(nodes, delta)
-      println("*************************************************")
-      println("*************************************************")
       println(s"Generated assignments:\n" + lut)
-      println("*************************************************")
-      println("*************************************************")
       trigger(InitialAssignments(lut) -> boot)
     }
     case Booted(assignment: LookupTable) => handle {
       log.info("Got NodeAssignment, overlay ready.")
       lut = Some(assignment)
-      // detector by partition
       val myPartitionTuple = assignment.partitions.find(_._2.exists(_.equals(self)))
       myPartitionTuple match {
         case Some((_, myPartition)) =>
@@ -110,7 +98,7 @@ class VSOverlayManager extends ComponentDefinition {
           trigger(SetTopology(lut, myPartition.toSet) -> beb)
           trigger(StartSequenceCons(myPartition.toSet) -> seqCons)
         case None =>
-          println("CANNOT FIND MY PARTITION")
+          println("Could not find my partition.")
           throw new Exception(self + " Could not find its own partition in lookup table!")
       }
     }
@@ -118,12 +106,12 @@ class VSOverlayManager extends ComponentDefinition {
 
   net uponEvent {
     case NetMessage(header, RouteMsg(killCmd, dm: Debug)) if killCmd startsWith "Kill/key:" => handle {
-      val key = killCmd.replace("Kill/key:","")
+      val key = killCmd.replace("Kill/key:", "")
       val partIterator = lut.get.lookup(key).iterator
-      var addr : Option[NetAddress] = None
-      do{
+      var addr: Option[NetAddress] = None
+      do {
         addr = Some(partIterator.next())
-      }while(addr.contains(self))
+      } while (addr.contains(self))
       trigger(NetMessage(header.src, addr.get, Debug("Suicide", dm.source)) -> net)
     }
     case NetMessage(header, RouteMsg("FailureDetect", dm: Debug)) => handle {
@@ -144,7 +132,6 @@ class VSOverlayManager extends ComponentDefinition {
       trigger(NetMessage(self, header.src, dm.response(OpCode.Ok, Some(lut.get.getPartitionsAsString()))) -> net)
     }
 
-    // TODO routing from clients is happening here
     case NetMessage(header, RouteMsg(key, msg: Op)) => handle {
       val nodes = lut.get.lookup(key).toSet
       trigger(SetTopology(lut, nodes) -> beb);
@@ -164,9 +151,8 @@ class VSOverlayManager extends ComponentDefinition {
   }
 
   route uponEvent {
-    // TODO routing from kv store is happening here
     case RouteMsg(key, msg) => handle {
-      val nodes =lut.get.lookup(key).toSet
+      val nodes = lut.get.lookup(key).toSet
       trigger(SetTopology(lut, nodes) -> beb);
       trigger(BEB_Broadcast(msg) -> beb);
     }

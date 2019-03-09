@@ -31,19 +31,20 @@ class SequencePaxos extends ComponentDefinition {
   import Role._
   import State._
 
-  val sc = provides[SequenceConsensus];
-  val ble = requires[BallotLeaderElection];
-  val pl = requires[Network];
-  val timer = requires[Timer];
+  val sc: NegativePort[SequenceConsensus] = provides[SequenceConsensus];
+  val ble: PositivePort[BallotLeaderElection] = requires[BallotLeaderElection];
+  val pl: PositivePort[Network] = requires[Network];
+  val timer: PositivePort[Timer] = requires[Timer];
   val las = mutable.Map.empty[NetAddress, Int];
   val lds = mutable.Map.empty[NetAddress, Int];
   val acks = mutable.Map.empty[NetAddress, (Long, List[Op])];
-  val timeUnit = cfg.getValue[Int]("id2203.project.timeUnit");
-  val ro = cfg.getValue[Float]("id2203.project.ro");
-  var self = cfg.getValue[NetAddress]("id2203.project.address");
+  val timeUnit: Int = cfg.getValue[Int]("id2203.project.timeUnit");
+  val ro: Float = cfg.getValue[Float]("id2203.project.ro");
+  val leasePeriod: Int = 20;
+  var self: NetAddress = cfg.getValue[NetAddress]("id2203.project.address");
   var isLeaseEnabled: Boolean = cfg.getValue[Boolean]("id2203.project.enableLease");
-  var pi = Set[NetAddress]()
-  var others = Set[NetAddress]()
+  var pi: Set[NetAddress] = Set[NetAddress]()
+  var others: Set[NetAddress] = Set[NetAddress]()
   var majority: Int = (pi.size / 2) + 1;
   var state: (Role.Value, State.Value) = (FOLLOWER, UNKOWN);
   var nL = 0l;
@@ -55,15 +56,12 @@ class SequencePaxos extends ComponentDefinition {
   // leader state
   var propCmds = List.empty[Op];
   var lc = 0;
-
   // Leader lease
   var tProm: Int = 0;
   var currentTime: Int = 0;
   var tL: Int = 0;
   var canRead: Boolean = false;
-  val leasePeriod: Int = 20;
   var pending: Boolean = false;
-
 
   timer uponEvent {
     case CheckTimeout(_) => handle {
@@ -72,7 +70,7 @@ class SequencePaxos extends ComponentDefinition {
       val secondsBefore = 5;
       if (leader.isDefined && self == leader.get) {
         if (pending || currentTime - tL == maxTime - secondsBefore) { // try and extend lease
-          println("******Trying to extend lease....");
+          println("Trying to extend lease....");
           tL = currentTime;
           state = (LEADER, PREPARE);
           acks.clear;
@@ -83,6 +81,7 @@ class SequencePaxos extends ComponentDefinition {
           nProm = nL;
         } else if (currentTime - tL == maxTime) { // lease expired
           canRead = false;
+          println("Lease expired...");
         }
       }
       startTimer();
@@ -131,7 +130,7 @@ class SequencePaxos extends ComponentDefinition {
         tProm = currentTime;
         trigger(NetMessage(p.dst, p.src, Promise(np, na, sfx, ldp)) -> pl);
       } else {
-        println("=====REFUSE PREPARE; lease is not over");
+        println("Refuse PREPARE; lease is not over");
       }
     }
     case NetMessage(a, Promise(n, na, sfxa, lda)) => handle {
@@ -141,14 +140,14 @@ class SequencePaxos extends ComponentDefinition {
         val P = pi.filter(acks isDefinedAt _);
         val Psize = P.size;
         if (P.size == majority) {
-          var (k, sfx) = acks.maxBy { case (add, (v, comm)) => v };
+          val (k, sfx) = acks.maxBy { case (add, (v, comm)) => v };
           va = prefix(va, ld) ++ sfx._2 ++ propCmds;
           las(self) = va.size
           propCmds = List.empty[Op];
           state = (LEADER, ACCEPT);
           canRead = true;
           pending = false;
-          println("======LEASE ACQUIRED....");
+          println("Lease acquired....");
           for (p <- pi) {
             if ((lds isDefinedAt p) && p != self) {
               val sfxp = suffix(va, lds(p));
@@ -190,7 +189,7 @@ class SequencePaxos extends ComponentDefinition {
     case NetMessage(a, Accepted(n, m)) => handle {
       if ((n == nL) && (state == (LEADER, ACCEPT))) {
         las(a.src) = m;
-        var P = pi.filter(las isDefinedAt _).filter(las(_) >= m);
+        val P = pi.filter(las isDefinedAt _).filter(las(_) >= m);
         if (lc < m && P.size >= majority) {
           lc = m;
           for (p <- pi) {
@@ -205,7 +204,6 @@ class SequencePaxos extends ComponentDefinition {
 
   sc uponEvent {
     case SC_Propose(c: Get) => handle {
-      println("RECEIVED SC_RESPONSE WITH GET OPERATION FROM ", c.source);
       if (state._1 == LEADER) {
         if (canRead) {
           println("Lease is on; can perform operation locally");
@@ -214,7 +212,7 @@ class SequencePaxos extends ComponentDefinition {
           serveOperation(c);
         }
       } else {
-        println(s"--------------Not the leader - ignore message");
+        println(s"Not the leader - ignore message");
       }
 
     }
@@ -254,7 +252,6 @@ class SequencePaxos extends ComponentDefinition {
   }
 
   def serveOperation(c: Op): Unit = {
-    println("RECEIVED SC_RESPONSE FROM ", c.source);
     if (state == (LEADER, PREPARE)) {
       propCmds :+= c;
     }
@@ -267,7 +264,7 @@ class SequencePaxos extends ComponentDefinition {
         }
       }
     } else {
-      println(s"--------------Not the leader - ignore message");
+      println(s"Not the leader - ignore message");
     }
   }
 }

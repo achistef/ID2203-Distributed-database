@@ -1,11 +1,11 @@
 package se.kth.id2203.beb
 
-import se.kth.id2203.kvstore.Debug
 import se.kth.id2203.kompicsevents.{BEB_Broadcast, BEB_Broadcast_Global, BEB_Deliver, SetTopology}
+import se.kth.id2203.kvstore.Debug
 import se.kth.id2203.networking.{NetAddress, NetMessage}
 import se.kth.id2203.overlay.LookupTable
 import se.sics.kompics.network.Network
-import se.sics.kompics.sl.{ComponentDefinition, Init, Port, handle}
+import se.sics.kompics.sl.{ComponentDefinition, Init, NegativePort, Port, PositivePort, handle}
 
 import scala.collection.immutable.Set
 
@@ -17,10 +17,10 @@ class BestEffortBroadcast extends Port {
 
 
 class BasicBroadcast(bebInit: Init[BasicBroadcast]) extends ComponentDefinition {
-  val pLink = requires[Network];
-  var beb = provides[BestEffortBroadcast];
+  val pLink: PositivePort[Network] = requires[Network];
+  var beb: NegativePort[BestEffortBroadcast] = provides[BestEffortBroadcast];
 
-  var self = bebInit match {
+  var self: NetAddress = bebInit match {
     case Init(s: NetAddress) => s
   };
   var myPartitionTopology: List[NetAddress] = List.empty;
@@ -28,7 +28,7 @@ class BasicBroadcast(bebInit: Init[BasicBroadcast]) extends ComponentDefinition 
 
   beb uponEvent {
     case x: BEB_Broadcast_Global => handle {
-      for(it <- systemTopology.get.partitions; address <- it._2)
+      for (it <- systemTopology.get.partitions; address <- it._2)
         trigger(NetMessage(self, address, x) -> pLink)
     }
 
@@ -46,11 +46,11 @@ class BasicBroadcast(bebInit: Init[BasicBroadcast]) extends ComponentDefinition 
 
 
   pLink uponEvent {
-    case NetMessage(_, BEB_Broadcast_Global( deb@ Debug("BroadcastFlood", receiver, _))) => handle {
+    case NetMessage(_, BEB_Broadcast_Global(deb@Debug("BroadcastFlood", receiver, _))) => handle {
       trigger(NetMessage(self, receiver, BEB_Deliver(receiver, deb)) -> pLink)
     }
-    case NetMessage(_, BEB_Broadcast_Global(dbm @ Debug("FailureDetect", _, _))) => handle {
-      trigger(NetMessage(self,self, dbm) -> pLink)
+    case NetMessage(_, BEB_Broadcast_Global(dbm@Debug("FailureDetect", _, _))) => handle {
+      trigger(NetMessage(self, self, dbm) -> pLink)
     }
 
     case NetMessage(src, BEB_Broadcast_Global(payload)) => handle {

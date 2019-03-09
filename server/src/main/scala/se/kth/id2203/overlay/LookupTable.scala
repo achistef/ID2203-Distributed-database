@@ -36,10 +36,8 @@ class LookupTable extends NodeAssignment with Serializable {
 
   def lookup(key: String): Iterable[NetAddress] = {
     var keyHash = key.hashCode();
-    println(s">>> KEYHASH: $keyHash")
-    if(keyHash < 0) keyHash *= (-1);
+    if (keyHash < 0) keyHash *= (-1);
     val partition = keyHash % (partitions.lastKey + 1);
-    println(s">>> PARTITION CHOSEN: $partition");
     return partitions(partition);
   }
 
@@ -66,9 +64,6 @@ object LookupTable {
     val lut = new LookupTable()
     var counter = 0
     var set: mutable.Set[NetAddress] = mutable.Set.empty
-    // todo add value partitioning or something?
-    var minRange = Integer.MIN_VALUE/(nodes.size/delta)
-    val range = Integer.MAX_VALUE/(nodes.size/delta);
     for (netAddress <- nodes) {
       set += netAddress
       if (set.size == delta) {

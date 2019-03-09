@@ -21,22 +21,29 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package se.kth.id2203.bootstrapping;
+package se.kth.id2203.bootstrapping
 
-import java.util.UUID;
-import se.kth.id2203.networking._;
-import se.sics.kompics.sl._;
-import se.sics.kompics.Start;
-import se.sics.kompics.network.Network;
+;
+
+import java.util.UUID
+
+import se.kth.id2203.networking._
+import se.sics.kompics.Start
+import se.sics.kompics.network.Network
+import se.sics.kompics.sl._
 import se.sics.kompics.timer._;
 
 object BootstrapClient {
+
   sealed trait State;
+
   case object Waiting extends State;
+
   case object Started extends State;
 }
 
 class BootstrapClient extends ComponentDefinition {
+
   import BootstrapClient._;
 
   //******* Ports ******
@@ -54,11 +61,11 @@ class BootstrapClient extends ComponentDefinition {
   //******* Handlers ******
   ctrl uponEvent {
     case _: Start => handle {
-      println("Starting bootstrap client on {}", self);
+      println(s"Starting bootstrap client on $self");
       val timeout: Long = cfg.getValue[Long]("id2203.project.keepAlivePeriod");
       val spt = new SchedulePeriodicTimeout(timeout, timeout);
       spt.setTimeoutEvent(BSTimeout(spt));
-      trigger (spt -> timer);
+      trigger(spt -> timer);
       timeoutId = Some(spt.getTimeoutEvent().getTimeoutId());
     }
   }
@@ -85,7 +92,7 @@ class BootstrapClient extends ComponentDefinition {
           trigger(Booted(assignment) -> bootstrap);
           timeoutId match {
             case Some(tid) => trigger(new CancelPeriodicTimeout(tid) -> timer);
-            case None      => // nothing to cancel
+            case None => // nothing to cancel
           }
           trigger(NetMessage(self, server, Ready) -> net);
           state = Started;
@@ -98,7 +105,7 @@ class BootstrapClient extends ComponentDefinition {
   override def tearDown(): Unit = {
     timeoutId match {
       case Some(tid) => trigger(new CancelPeriodicTimeout(tid) -> timer);
-      case None      => // nothing to cancel
+      case None => // nothing to cancel
     }
   }
 }

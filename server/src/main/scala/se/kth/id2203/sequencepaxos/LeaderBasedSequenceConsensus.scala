@@ -29,15 +29,15 @@ class SequencePaxos extends ComponentDefinition {
   import Role._
   import State._
 
-  val sc = provides[SequenceConsensus];
-  val ble = requires[BallotLeaderElection];
-  val pl = requires[Network];
+  val sc: NegativePort[SequenceConsensus] = provides[SequenceConsensus];
+  val ble: PositivePort[BallotLeaderElection] = requires[BallotLeaderElection];
+  val pl: PositivePort[Network] = requires[Network];
   val las = mutable.Map.empty[NetAddress, Int];
   val lds = mutable.Map.empty[NetAddress, Int];
   val acks = mutable.Map.empty[NetAddress, (Long, List[Op])];
-  var self = cfg.getValue[NetAddress]("id2203.project.address");
-  var pi = Set[NetAddress]()
-  var others = Set[NetAddress]()
+  var self: NetAddress = cfg.getValue[NetAddress]("id2203.project.address");
+  var pi: Set[NetAddress] = Set[NetAddress]()
+  var others: Set[NetAddress] = Set[NetAddress]()
   var majority: Int = (pi.size / 2) + 1;
   var state: (Role.Value, State.Value) = (FOLLOWER, UNKOWN);
   var nL = 0l;
@@ -54,8 +54,8 @@ class SequencePaxos extends ComponentDefinition {
     case BLE_Leader(l, n) => handle {
       if (n > nL) {
         leader = Some(l);
-        println(s"NEW LEADER ELECTED: $leader");
         nL = n;
+        println(s"NEW LEADER ELECTED: $leader");
         if (self == l && nL > nProm) {
           state = (LEADER, PREPARE);
           propCmds = List.empty[Op];
@@ -97,7 +97,7 @@ class SequencePaxos extends ComponentDefinition {
         val P = pi.filter(acks isDefinedAt _);
         val Psize = P.size;
         if (P.size == majority) {
-          var (k, sfx) = acks.maxBy { case (add, (v, comm)) => v };
+          val (k, sfx) = acks.maxBy { case (_, (v, _)) => v };
           va = prefix(va, ld) ++ sfx._2 ++ propCmds;
           las(self) = va.size
           propCmds = List.empty[Op];
@@ -158,7 +158,6 @@ class SequencePaxos extends ComponentDefinition {
 
   sc uponEvent {
     case SC_Propose(c: Op) => handle {
-      println("RECEIVED SC_RESPONSE FROM ", c.source);
       if (state == (LEADER, PREPARE)) {
         propCmds :+= c;
       }
@@ -171,7 +170,7 @@ class SequencePaxos extends ComponentDefinition {
           }
         }
       } else {
-          println(s"--------------Not the leader - ignore message");
+        println(s"Not the leader - ignore message");
       }
     }
     case StartSequenceCons(nodes: Set[NetAddress]) => handle {

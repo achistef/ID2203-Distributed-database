@@ -21,10 +21,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package se.kth.id2203.bootstrapping;
+package se.kth.id2203.bootstrapping
+
+;
 
 import se.sics.kompics.KompicsEvent;
 
 case class Boot(assignment: NodeAssignment) extends KompicsEvent;
+
 case object CheckIn extends KompicsEvent;
+
 case object Ready extends KompicsEvent;

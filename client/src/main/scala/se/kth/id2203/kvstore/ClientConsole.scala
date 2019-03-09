@@ -52,9 +52,7 @@ class ClientConsole(val service: ClientService) extends CommandConsole with Pars
     out.println("Operation sent! Awaiting response...");
     try {
       val r = Await.result(fr, 5.seconds);
-      out.println();
-      out.println("*******************Operation complete! Response was: " + r.status + ", Returned value: " + r.value.getOrElse(None));
-      out.println();
+      out.println("Operation complete! Response was: " + r.status + ", Returned value: " + r.value.getOrElse(None));
     } catch {
       case e: Throwable => logger.error("Error during get.", e);
     }
@@ -67,7 +65,7 @@ class ClientConsole(val service: ClientService) extends CommandConsole with Pars
     out.println("Operation sent! Awaiting response...");
     try {
       val r = Await.result(fr, 5.seconds);
-      out.println("*******************Operation complete! Response was: " + r.status);
+      out.println("Operation complete! Response was: " + r.status);
     } catch {
       case e: Throwable => logger.error("Error during put.", e);
     }
@@ -80,7 +78,7 @@ class ClientConsole(val service: ClientService) extends CommandConsole with Pars
     out.println("Operation sent! Awaiting response...");
     try {
       val r = Await.result(fr, 5.seconds);
-      out.println("*******************Operation complete! Response was:" + r.status + ", Returned value: "+ r.value.getOrElse(None));
+      out.println("Operation complete! Response was:" + r.status + ", Returned value: "+ r.value.getOrElse(None));
     } catch {
       case e: Throwable => logger.error("Error during op.", e);
     }
@@ -93,8 +91,7 @@ class ClientConsole(val service: ClientService) extends CommandConsole with Pars
     out.println("Operation sent! Awaiting response...");
     try {
       val r = Await.result(fr, 5.seconds)
-      // TODO : this is the source of the response
-      out.println("***********Operation complete! Response was: " + r.status + ", Returned value: "+ r.value);
+      out.println("Operation complete! Response was: " + r.status + ", Returned value: "+ r.value);
     } catch {
       case _: Throwable => // the promise  always throws an exception... let's not print it
     }

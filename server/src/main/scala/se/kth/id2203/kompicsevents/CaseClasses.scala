@@ -1,10 +1,9 @@
 package se.kth.id2203.kompicsevents
 
 import se.kth.id2203.kvstore.Op
-import se.kth.id2203.networking.{NetAddress, NetHeader}
+import se.kth.id2203.networking.NetAddress
 import se.kth.id2203.overlay.LookupTable
 import se.sics.kompics.KompicsEvent
-import se.sics.kompics.network.Address
 import se.sics.kompics.timer.{ScheduleTimeout, Timeout}
 
 import scala.collection.immutable.Set

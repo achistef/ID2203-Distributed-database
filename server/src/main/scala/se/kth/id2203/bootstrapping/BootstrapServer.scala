@@ -21,54 +21,56 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package se.kth.id2203.bootstrapping;
+package se.kth.id2203.bootstrapping
+
+;
 
 import java.util.UUID
 
 import se.kth.id2203.networking._
-import se.sics.kompics.sl._
 import se.sics.kompics.Start
 import se.sics.kompics.network.Network
+import se.sics.kompics.sl._
 import se.sics.kompics.timer._
 
-import collection.mutable;
+import scala.collection.mutable;
 
 object BootstrapServer {
+
   sealed trait State;
+
   case object Collecting extends State;
+
   case object Seeding extends State;
+
   case object Done extends State;
 
 }
 
 class BootstrapServer extends ComponentDefinition {
+
   import BootstrapServer._;
 
   //******* Ports ******
-  val boot = provides(Bootstrapping);
-  val net = requires[Network];
-  val timer = requires[Timer];
+  val boot: NegativePort[Bootstrapping.type] = provides(Bootstrapping);
+  val net: PositivePort[Network] = requires[Network];
+  val timer: PositivePort[Timer] = requires[Timer];
   //******* Fields ******
-  val self = cfg.getValue[NetAddress]("id2203.project.address");
-  val bootThreshold = cfg.getValue[Int]("id2203.project.bootThreshold");
-  println(" --------------- ")
-  println()
-  println ("threshold =  " + bootThreshold)
-  println()
-  println(" --------------- ")
-  private var state: State = Collecting;
-  private var timeoutId: Option[UUID] = None;
+  val self: NetAddress = cfg.getValue[NetAddress]("id2203.project.address");
+  val bootThreshold: Int = cfg.getValue[Int]("id2203.project.bootThreshold");
   private val active = mutable.HashSet.empty[NetAddress];
   private val ready = mutable.HashSet.empty[NetAddress];
+  private var state: State = Collecting;
+  private var timeoutId: Option[UUID] = None;
   private var initialAssignment: Option[NodeAssignment] = None;
   //******* Handlers ******
   ctrl uponEvent {
     case _: Start => handle {
       log.info("Starting bootstrap server on {}, waiting for {} nodes...", self, bootThreshold);
-      val timeout: Long = (cfg.getValue[Long]("id2203.project.keepAlivePeriod") * 2l);
+      val timeout: Long = cfg.getValue[Long]("id2203.project.keepAlivePeriod") * 2l;
       val spt = new SchedulePeriodicTimeout(timeout, timeout);
       spt.setTimeoutEvent(BSTimeout(spt));
-      trigger (spt -> timer);
+      trigger(spt -> timer);
       timeoutId = Some(spt.getTimeoutEvent().getTimeoutId());
       active += self;
     }
@@ -129,12 +131,12 @@ class BootstrapServer extends ComponentDefinition {
   override def tearDown(): Unit = {
     timeoutId match {
       case Some(tid) => trigger(new CancelPeriodicTimeout(tid) -> timer);
-      case None      => // nothing to clean up
+      case None => // nothing to clean up
     }
   }
 
   private def bootUp(): Unit = {
-    log.info("Threshold reached. Generating assignments...");
+    println("Threshold reached. Generating assignments...");
     state = Seeding;
     trigger(GetInitialAssignments(active.toSet) -> boot);
   }

@@ -21,15 +21,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package se.kth.id2203;
+package se.kth.id2203
 
-import se.kth.id2203.networking.NetAddress;
+;
+
+import se.kth.id2203.networking.NetAddress
+import se.sics.kompics.Init
+import se.sics.kompics.network.Network
+import se.sics.kompics.network.netty.{NettyInit, NettyNetwork}
 import se.sics.kompics.sl._
-import se.sics.kompics.Init;
-import se.sics.kompics.network.Network;
-import se.sics.kompics.network.netty.NettyInit;
-import se.sics.kompics.network.netty.NettyNetwork;
-import se.sics.kompics.timer.Timer;
+import se.sics.kompics.timer.Timer
 import se.sics.kompics.timer.java.JavaTimer;
 
 class HostComponent extends ComponentDefinition {

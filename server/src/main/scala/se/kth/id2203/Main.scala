@@ -21,18 +21,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package se.kth.id2203;
+package se.kth.id2203
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.UUID;
-import se.kth.id2203.networking._;
-import se.sics.kompics.Kompics;
-import se.sics.kompics.config._;
-import se.sics.kompics.network.netty.serialization.Serializers;
+;
+
+import java.net.InetAddress
+import java.util.UUID
+
 import org.rogach.scallop._
+import se.kth.id2203.networking._
+import se.sics.kompics.Kompics
+import se.sics.kompics.config._
+import se.sics.kompics.network.netty.serialization.Serializers
 
 class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
+
   import ScallopConverters._;
 
   version("Project18 Scala Server v1.0");
@@ -58,11 +61,13 @@ object Main {
     // sorry Java API  only :(
     val c = Kompics.getConfig().asInstanceOf[Config.Impl];
     val configSelf = c.getValue("id2203.project.address", classOf[NetAddress]);
-    assert(configSelf != null, { "No config provided!" }); // it would be in the reference.conf
+    assert(configSelf != null, {
+      "No config provided!"
+    }); // it would be in the reference.conf
     val configBuilder = c.modify(UUID.randomUUID());
     val self = (conf.ip.toOption, conf.port.toOption) match {
       case (None, None) => configSelf
-      case (cip, cp)    => NetAddress(cip.getOrElse(configSelf.getIp()), cp.getOrElse(configSelf.getPort()))
+      case (cip, cp) => NetAddress(cip.getOrElse(configSelf.getIp()), cp.getOrElse(configSelf.getPort()))
     };
     configBuilder.setValue("id2203.project.address", self);
     if (conf.server.isSupplied) {
